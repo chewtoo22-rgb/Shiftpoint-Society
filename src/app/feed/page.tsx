@@ -84,6 +84,21 @@ export default async function FeedPage() {
                 )}
                 <p className={styles.body}>{post.body}</p>
 
+                {post.car?.heroImageUrl && (
+                  <Link
+                    href={`/u/${post.author.handle}`}
+                    className={styles.mediaFrame}
+                    aria-label={`Open ${post.car.nickname || `${post.car.year} ${post.car.make} ${post.car.model}`} garage`}
+                  >
+                    <img
+                      src={post.car.heroImageUrl}
+                      alt={post.car.nickname || `${post.car.year} ${post.car.make} ${post.car.model}`}
+                      loading="lazy"
+                    />
+                    <span>GARAGE MEDIA // OPEN BUILD →</span>
+                  </Link>
+                )}
+
                 <div className={styles.reactions}>
                   {reactionOptions.map((reaction) => {
                     const count = post.reactions.filter((item) => item.type === reaction.type).length;
