@@ -26,19 +26,22 @@ export async function updateMemberProfile(formData: FormData) {
   }
 
   try {
-    const updated = await db.user.update({
-      where: { id: member.id },
-      data: {
-        handle: parsed.data.handle,
-        displayName: parsed.data.displayName,
-        bio: parsed.data.bio ?? null,
-      },
-    });
+    const [updated, carCount] = await db.$transaction([
+      db.user.update({
+        where: { id: member.id },
+        data: {
+          handle: parsed.data.handle,
+          displayName: parsed.data.displayName,
+          bio: parsed.data.bio ?? null,
+        },
+      }),
+      db.car.count({ where: { ownerId: member.id } }),
+    ]);
 
     revalidatePath("/profile");
     revalidatePath(`/u/${member.handle}`);
     revalidatePath(`/u/${updated.handle}`);
-    redirect("/garage/new");
+    redirect(carCount === 0 ? "/garage/new" : "/garage");
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       throw new Error("That Society handle is already taken");
