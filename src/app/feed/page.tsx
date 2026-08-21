@@ -1,9 +1,16 @@
 import Link from "next/link";
 import styles from "./feed.module.css";
-import { createFeedPost } from "./actions";
+import { addFeedComment, createFeedPost, toggleFeedReaction } from "./actions";
 import { getCurrentMember } from "@/lib/current-member";
 import { db } from "@/lib/db";
 import { getCommunityFeed } from "@/lib/feed-repository";
+
+const reactionOptions = [
+  { type: "LIKE", label: "LIKE", icon: "♥" },
+  { type: "FIRE", label: "FIRE", icon: "🔥" },
+  { type: "WRENCH", label: "WRENCH", icon: "🔧" },
+  { type: "RESPECT", label: "RESPECT", icon: "🤝" },
+] as const;
 
 function timeAgo(date: Date) {
   const seconds = Math.max(1, Math.floor((Date.now() - date.getTime()) / 1000));
@@ -76,10 +83,66 @@ export default async function FeedPage() {
                   </Link>
                 )}
                 <p className={styles.body}>{post.body}</p>
-                <footer className={styles.stats}>
-                  <span>{post.reactions.length} reactions</span>
-                  <span>{post.comments.length} comments</span>
-                </footer>
+
+                <div className={styles.reactions}>
+                  {reactionOptions.map((reaction) => {
+                    const count = post.reactions.filter((item) => item.type === reaction.type).length;
+                    const active = post.reactions.some(
+                      (item) => item.type === reaction.type && item.userId === member.id,
+                    );
+
+                    return (
+                      <form action={toggleFeedReaction} key={reaction.type}>
+                        <input type="hidden" name="postId" value={post.id} />
+                        <input type="hidden" name="type" value={reaction.type} />
+                        <button
+                          className={`${styles.reactionButton} ${active ? styles.reactionActive : ""}`}
+                          type="submit"
+                          aria-pressed={active}
+                          title={reaction.label}
+                        >
+                          <span>{reaction.icon}</span>
+                          <strong>{count}</strong>
+                        </button>
+                      </form>
+                    );
+                  })}
+                </div>
+
+                <section className={styles.comments}>
+                  <div className={styles.commentHeader}>
+                    <span>WRENCH TALK</span>
+                    <span>{post._count.comments} {post._count.comments === 1 ? "COMMENT" : "COMMENTS"}</span>
+                  </div>
+
+                  {post.comments.length > 0 && (
+                    <div className={styles.commentStack}>
+                      {post.comments.map((comment) => (
+                        <div className={styles.comment} key={comment.id}>
+                          <div>
+                            <Link href={`/u/${comment.author.handle}`}>
+                              {comment.author.displayName || comment.author.handle}
+                            </Link>
+                            <span>@{comment.author.handle} · {timeAgo(comment.createdAt)}</span>
+                          </div>
+                          <p>{comment.body}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {post._count.comments > post.comments.length && (
+                    <p className={styles.moreComments}>
+                      Showing latest thread entries · {post._count.comments - post.comments.length} more in the garage log
+                    </p>
+                  )}
+
+                  <form action={addFeedComment} className={styles.commentForm}>
+                    <input type="hidden" name="postId" value={post.id} />
+                    <input name="body" required maxLength={600} placeholder="Add to the wrench talk…" />
+                    <button type="submit">REPLY →</button>
+                  </form>
+                </section>
               </article>
             ))}
           </div>
