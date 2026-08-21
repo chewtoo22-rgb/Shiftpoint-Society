@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { addBuildUpdate } from "@/app/garage/actions";
 import { getPrimaryGarage } from "@/lib/garage-repository";
 
@@ -13,6 +14,7 @@ export default async function GaragePage() {
           <div className="eyebrow">{garage.eyebrow}</div>
           <h1 className="garageTitle">{garage.year} {garage.make}<br/><em>{garage.model}</em></h1>
           <p className="lead">Real car. Real parts. Real numbers. Every change gets a timestamp, context and proof trail instead of disappearing into a social feed.</p>
+          <p><Link className="secondaryCta" href="/garage/new">+ ADD ANOTHER CAR</Link></p>
         </div>
         <div className="specPlate">
           <div><span>ENGINE</span><strong>{garage.engine}</strong></div>
