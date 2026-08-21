@@ -12,6 +12,16 @@ const reactionOptions = [
   { type: "RESPECT", label: "RESPECT", icon: "🤝" },
 ] as const;
 
+const postKinds = [
+  { value: "GENERAL", label: "GENERAL" },
+  { value: "PULL", label: "PULL / RUN" },
+  { value: "DYNO", label: "DYNO" },
+  { value: "INSTALL", label: "INSTALL" },
+  { value: "QUESTION", label: "QUESTION" },
+  { value: "VIDEO", label: "VIDEO" },
+  { value: "EVENT", label: "EVENT" },
+] as const;
+
 function timeAgo(date: Date) {
   const seconds = Math.max(1, Math.floor((Date.now() - date.getTime()) / 1000));
   if (seconds < 60) return `${seconds}s`;
@@ -53,6 +63,11 @@ export default async function FeedPage() {
                   <option key={car.id} value={car.id}>
                     {car.nickname ? `${car.nickname} — ` : ""}{car.year} {car.make} {car.model}
                   </option>
+                ))}
+              </select>
+              <select name="kind" defaultValue="GENERAL" aria-label="Post type">
+                {postKinds.map((kind) => (
+                  <option key={kind.value} value={kind.value}>{kind.label}</option>
                 ))}
               </select>
               <button className="cta" type="submit">DROP UPDATE →</button>
