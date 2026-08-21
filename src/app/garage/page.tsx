@@ -1,15 +1,46 @@
 import Link from "next/link";
 import { addBuildUpdate } from "@/app/garage/actions";
 import { addInstalledPart } from "@/app/garage/parts/actions";
-import { getPrimaryGarage } from "@/lib/garage-repository";
+import { getGarage, getGarageSwitcher } from "@/lib/garage-repository";
 
 export const dynamic = "force-dynamic";
 
-export default async function GaragePage() {
-  const garage = await getPrimaryGarage();
+type GaragePageProps = {
+  searchParams?: Promise<{ car?: string }>;
+};
+
+export default async function GaragePage({ searchParams }: GaragePageProps) {
+  const params = await searchParams;
+  const selectedCarId = params?.car;
+  const [garage, cars] = await Promise.all([
+    getGarage(selectedCarId),
+    getGarageSwitcher(),
+  ]);
 
   return (
     <div className="shell garageShell">
+      {cars.length > 1 && (
+        <section className="garageSwitcher" aria-label="Garage vehicles">
+          <div className="sectionKicker">MY VEHICLES</div>
+          <div className="garageSwitcherLinks">
+            {cars.map((car) => {
+              const active = car.id === garage.id;
+              const label = car.nickname?.trim() || `${car.year} ${car.make} ${car.model}`;
+              return (
+                <Link
+                  key={car.id}
+                  className={active ? "garageButton" : "secondaryCta"}
+                  href={`/garage?car=${encodeURIComponent(car.id)}`}
+                  aria-current={active ? "page" : undefined}
+                >
+                  {label.toUpperCase()}
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       <section className="garageHero">
         <div>
           <div className="eyebrow">{garage.eyebrow}</div>
