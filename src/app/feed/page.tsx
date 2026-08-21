@@ -83,7 +83,7 @@ export default async function FeedPage() {
                 <p>The Society wire is quiet. Drop the first garage update.</p>
               </article>
             ) : posts.map((post) => {
-              const attachment = extractPostAttachment(post.body);
+              const attachment = post.media.length === 0 ? extractPostAttachment(post.body) : null;
 
               return (
                 <article className={`card ${styles.post}`} id={`post-${post.id}`} key={post.id}>
@@ -103,6 +103,28 @@ export default async function FeedPage() {
                   )}
                   <p className={styles.body}>{post.body}</p>
 
+                  {post.media.length > 0 && (
+                    <div className={styles.mediaGallery} data-count={post.media.length}>
+                      {post.media.map((media) => (
+                        <div className={styles.persistedMedia} key={media.id}>
+                          {media.type === "IMAGE" ? (
+                            <img
+                              src={media.url}
+                              alt={media.originalName || "Shiftpoint post media"}
+                              loading="lazy"
+                            />
+                          ) : (
+                            <video controls preload="metadata">
+                              <source src={media.url} type={media.mimeType} />
+                              Your browser does not support this video.
+                            </video>
+                          )}
+                          <span>{media.type} // SOCIETY MEDIA</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {attachment && (
                     <a
                       className={styles.attachmentCard}
@@ -119,7 +141,7 @@ export default async function FeedPage() {
                     </a>
                   )}
 
-                  {post.car?.heroImageUrl && (
+                  {post.media.length === 0 && post.car?.heroImageUrl && (
                     <Link
                       href={`/u/${post.author.handle}`}
                       className={styles.mediaFrame}
