@@ -22,6 +22,17 @@ export async function getCommunityFeed(limit = 30) {
           heroImageUrl: true,
         },
       },
+      media: {
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        select: {
+          id: true,
+          url: true,
+          type: true,
+          mimeType: true,
+          originalName: true,
+          sortOrder: true,
+        },
+      },
       reactions: {
         select: {
           userId: true,
