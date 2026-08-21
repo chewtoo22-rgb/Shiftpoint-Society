@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { requireOwnedCar } from "@/lib/current-member";
 
 const installedPartSchema = z.object({
   carId: z.string().min(1),
@@ -22,6 +23,8 @@ export async function addInstalledPart(formData: FormData) {
     partNumber: formData.get("partNumber") || undefined,
     notes: formData.get("notes") || undefined,
   });
+
+  await requireOwnedCar(input.carId);
 
   let part = await db.part.findFirst({
     where: {
