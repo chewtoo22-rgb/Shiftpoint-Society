@@ -1,7 +1,9 @@
-import { demoGarage } from "@/lib/garage";
+import { getPrimaryGarage } from "@/lib/garage-repository";
 
-export default function GaragePage() {
-  const garage = demoGarage;
+export const dynamic = "force-dynamic";
+
+export default async function GaragePage() {
+  const garage = await getPrimaryGarage();
 
   return (
     <div className="shell garageShell">
@@ -31,7 +33,7 @@ export default function GaragePage() {
           <div className="sectionKicker">CURRENT SETUP</div>
           <div className="modList">
             {garage.mods.map((mod) => (
-              <article key={mod.type} className="modRow">
+              <article key={`${mod.type}-${mod.name}`} className="modRow">
                 <span>{mod.type}</span><strong>{mod.name}</strong><b>{mod.delta}</b>
               </article>
             ))}
