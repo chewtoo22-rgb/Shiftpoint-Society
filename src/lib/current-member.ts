@@ -12,6 +12,9 @@ type SessionMember = {
 /**
  * Central identity boundary for every owner-scoped garage read/write.
  * Never accept an owner id from form data.
+ *
+ * The provider handle is only a bootstrap value. Once a member chooses a
+ * Society handle, normal authenticated requests must never overwrite it.
  */
 export async function getCurrentMember() {
   const session = await auth();
@@ -21,14 +24,22 @@ export async function getCurrentMember() {
     redirect("/sign-in");
   }
 
-  return db.user.upsert({
+  const existing = await db.user.findUnique({
     where: { authSubject: sessionUser.authSubject },
-    update: {
-      handle: sessionUser.handle,
-      displayName: sessionUser.name ?? undefined,
-      avatarUrl: sessionUser.image ?? undefined,
-    },
-    create: {
+  });
+
+  if (existing) {
+    return db.user.update({
+      where: { id: existing.id },
+      data: {
+        displayName: existing.displayName ?? sessionUser.name ?? undefined,
+        avatarUrl: sessionUser.image ?? existing.avatarUrl ?? undefined,
+      },
+    });
+  }
+
+  return db.user.create({
+    data: {
       authSubject: sessionUser.authSubject,
       handle: sessionUser.handle,
       displayName: sessionUser.name ?? sessionUser.handle,
