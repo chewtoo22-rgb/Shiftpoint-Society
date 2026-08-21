@@ -1,0 +1,27 @@
+name: Shiftpoint CI
+
+on:
+  push:
+    branches: [main, phase-0/foundation]
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install
+      - run: npx prisma generate
+      - run: npm run typecheck
+      - run: npm test -- --passWithNoTests
+      - run: npm run build
+        env:
+          DATABASE_URL: postgresql://shiftpoint:shiftpoint@localhost:5432/shiftpoint
+          AUTH_SECRET: ci-only-secret
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
