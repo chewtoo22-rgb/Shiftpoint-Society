@@ -2,11 +2,11 @@ import { db } from "@/lib/db";
 import { getCurrentMember } from "@/lib/current-member";
 import { demoGarage, type GarageViewModel } from "@/lib/garage";
 
-type GarageRecord = Awaited<ReturnType<typeof loadPrimaryCar>>;
+type GarageRecord = Awaited<ReturnType<typeof loadCar>>;
 
-async function loadPrimaryCar(ownerId: string) {
+async function loadCar(ownerId: string, carId?: string) {
   return db.car.findFirst({
-    where: { ownerId },
+    where: carId ? { id: carId, ownerId } : { ownerId },
     orderBy: { updatedAt: "desc" },
     include: {
       buildEntries: {
@@ -62,13 +62,36 @@ function toGarageViewModel(car: NonNullable<GarageRecord>): GarageViewModel {
   };
 }
 
-export async function getPrimaryGarage(): Promise<GarageViewModel> {
+export async function getGarage(carId?: string): Promise<GarageViewModel> {
   try {
     const member = await getCurrentMember();
-    const car = await loadPrimaryCar(member.id);
+    const car = await loadCar(member.id, carId);
     return car ? toGarageViewModel(car) : demoGarage;
   } catch {
     // Phase 0 fallback keeps the garage usable before a database is attached.
     return demoGarage;
   }
+}
+
+export async function getGarageSwitcher() {
+  try {
+    const member = await getCurrentMember();
+    return await db.car.findMany({
+      where: { ownerId: member.id },
+      orderBy: { updatedAt: "desc" },
+      select: {
+        id: true,
+        year: true,
+        make: true,
+        model: true,
+        nickname: true,
+      },
+    });
+  } catch {
+    return [];
+  }
+}
+
+export async function getPrimaryGarage(): Promise<GarageViewModel> {
+  return getGarage();
 }
