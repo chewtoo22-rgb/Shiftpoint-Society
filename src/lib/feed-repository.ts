@@ -19,6 +19,7 @@ export async function getCommunityFeed(limit = 30) {
           make: true,
           model: true,
           nickname: true,
+          heroImageUrl: true,
         },
       },
       reactions: {
