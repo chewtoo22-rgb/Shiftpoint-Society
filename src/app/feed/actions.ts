@@ -10,6 +10,16 @@ const postSchema = z.object({
   carId: z.string().trim().optional(),
 });
 
+const commentSchema = z.object({
+  postId: z.string().trim().min(1),
+  body: z.string().trim().min(1, "Write a comment first.").max(600),
+});
+
+const reactionSchema = z.object({
+  postId: z.string().trim().min(1),
+  type: z.enum(["LIKE", "FIRE", "WRENCH", "RESPECT"]),
+});
+
 export async function createFeedPost(formData: FormData) {
   const member = await getCurrentMember();
   const parsed = postSchema.safeParse({
@@ -35,6 +45,78 @@ export async function createFeedPost(formData: FormData) {
       kind: "GENERAL",
     },
   });
+
+  revalidatePath("/feed");
+}
+
+export async function addFeedComment(formData: FormData) {
+  const member = await getCurrentMember();
+  const parsed = commentSchema.safeParse({
+    postId: formData.get("postId"),
+    body: formData.get("body"),
+  });
+
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Invalid comment");
+  }
+
+  const post = await db.post.findUnique({
+    where: { id: parsed.data.postId },
+    select: { id: true },
+  });
+
+  if (!post) throw new Error("Post not found");
+
+  await db.comment.create({
+    data: {
+      postId: post.id,
+      authorId: member.id,
+      body: parsed.data.body,
+    },
+  });
+
+  revalidatePath("/feed");
+}
+
+export async function toggleFeedReaction(formData: FormData) {
+  const member = await getCurrentMember();
+  const parsed = reactionSchema.safeParse({
+    postId: formData.get("postId"),
+    type: formData.get("type"),
+  });
+
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Invalid reaction");
+  }
+
+  const post = await db.post.findUnique({
+    where: { id: parsed.data.postId },
+    select: { id: true },
+  });
+
+  if (!post) throw new Error("Post not found");
+
+  const key = {
+    postId_userId_type: {
+      postId: post.id,
+      userId: member.id,
+      type: parsed.data.type,
+    },
+  } as const;
+
+  const existing = await db.reaction.findUnique({ where: key });
+
+  if (existing) {
+    await db.reaction.delete({ where: key });
+  } else {
+    await db.reaction.create({
+      data: {
+        postId: post.id,
+        userId: member.id,
+        type: parsed.data.type,
+      },
+    });
+  }
 
   revalidatePath("/feed");
 }
