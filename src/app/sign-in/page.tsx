@@ -8,24 +8,23 @@ export default function SignInPage() {
           <div className="eyebrow">MEMBER ACCESS // SHIFTPOINT SOCIETY</div>
           <h1>ENTER THE <em>SOCIETY.</em></h1>
           <p className="lead">
-            Sign in with GitHub to claim your member identity, create your garage,
-            log build updates, and keep your parts ledger tied to you.
+            Sign in with GitHub, claim your Society identity, then add your first car.
+            Your garage, build history, and parts ledger stay tied to your member account.
           </p>
           <form
             action={async () => {
               "use server";
-              await signIn("github", { redirectTo: "/garage" });
+              await signIn("github", { redirectTo: "/profile" });
             }}
           >
             <button className="cta" type="submit">SIGN IN WITH GITHUB →</button>
           </form>
         </div>
         <aside className="heroPanel">
-          <div className="eyebrow">IDENTITY RULES</div>
-          <h2>YOUR CAR. YOUR LOG. YOUR REP.</h2>
+          <div className="eyebrow">FIRST-LAP FLOW</div>
+          <h2>SIGN IN → CALLSIGN → FIRST CAR</h2>
           <p className="lead" style={{ fontSize: 15 }}>
-            Owner-scoped garage actions never trust an owner ID from the browser.
-            The authenticated session defines ownership at the server boundary.
+            New members move through identity setup before entering the garage, so public handles and ownership are established before the first build is created.
           </p>
         </aside>
       </section>
