@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { requireOwnedCar } from "@/lib/current-member";
 
 const buildUpdateSchema = z.object({
   carId: z.string().min(1),
@@ -16,6 +17,8 @@ export async function addBuildUpdate(formData: FormData) {
     title: formData.get("title"),
     body: formData.get("body"),
   });
+
+  await requireOwnedCar(input.carId);
 
   await db.buildEntry.create({
     data: {
