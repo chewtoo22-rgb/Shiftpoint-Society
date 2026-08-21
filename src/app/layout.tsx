@@ -21,6 +21,14 @@ const nav = [
   ["Deals", "/deals"],
 ];
 
+const mobileNav = [
+  ["Feed", "/feed", "WIRE"],
+  ["Activity", "/activity", "PULSE"],
+  ["Garage", "/garage", "SHOP"],
+  ["Meets", "/meets", "MEET"],
+  ["Deals", "/deals", "PARTS"],
+];
+
 const ACTIVITY_SEEN_COOKIE = "shiftpoint-activity-seen-at";
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -37,6 +45,12 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     unreadActivity = await getUnreadActivityCount(member.id, seenAt);
   }
 
+  const activityBadge = unreadActivity > 0 ? (
+    <span className="navBadge" aria-label={`${unreadActivity} unread activity items`}>
+      {unreadActivity > 99 ? "99+" : unreadActivity}
+    </span>
+  ) : null;
+
   return (
     <html lang="en">
       <body>
@@ -49,11 +63,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
             {nav.map(([label, href]) => (
               <Link key={href} href={href}>
                 {label}
-                {href === "/activity" && unreadActivity > 0 && (
-                  <span className="navBadge" aria-label={`${unreadActivity} unread activity items`}>
-                    {unreadActivity > 99 ? "99+" : unreadActivity}
-                  </span>
-                )}
+                {href === "/activity" && activityBadge}
               </Link>
             ))}
           </nav>
@@ -64,6 +74,17 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
           <span>SHIFTPOINT SOCIETY</span>
           <span>BUILT FOR PEOPLE WHO WRENCH.</span>
         </footer>
+        <nav className="mobileNav" aria-label="Mobile navigation">
+          {mobileNav.map(([label, href, kicker]) => (
+            <Link key={href} href={href}>
+              <span className="mobileNavKicker">{kicker}</span>
+              <span className="mobileNavLabel">
+                {label}
+                {href === "/activity" && activityBadge}
+              </span>
+            </Link>
+          ))}
+        </nav>
       </body>
     </html>
   );
