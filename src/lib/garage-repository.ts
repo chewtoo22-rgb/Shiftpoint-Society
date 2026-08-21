@@ -1,10 +1,12 @@
 import { db } from "@/lib/db";
+import { getCurrentMember } from "@/lib/current-member";
 import { demoGarage, type GarageViewModel } from "@/lib/garage";
 
 type GarageRecord = Awaited<ReturnType<typeof loadPrimaryCar>>;
 
-async function loadPrimaryCar() {
+async function loadPrimaryCar(ownerId: string) {
   return db.car.findFirst({
+    where: { ownerId },
     orderBy: { updatedAt: "desc" },
     include: {
       buildEntries: {
@@ -62,7 +64,8 @@ function toGarageViewModel(car: NonNullable<GarageRecord>): GarageViewModel {
 
 export async function getPrimaryGarage(): Promise<GarageViewModel> {
   try {
-    const car = await loadPrimaryCar();
+    const member = await getCurrentMember();
+    const car = await loadPrimaryCar(member.id);
     return car ? toGarageViewModel(car) : demoGarage;
   } catch {
     // Phase 0 fallback keeps the garage usable before a database is attached.
