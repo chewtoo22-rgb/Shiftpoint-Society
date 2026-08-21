@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import "./globals.css";
+import { getOptionalCurrentMember } from "@/lib/current-member";
+import { getUnreadActivityCount } from "@/lib/activity-repository";
 
 export const metadata: Metadata = {
   title: "Shiftpoint Society",
@@ -18,7 +21,22 @@ const nav = [
   ["Deals", "/deals"],
 ];
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+const ACTIVITY_SEEN_COOKIE = "shiftpoint-activity-seen-at";
+
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const [member, cookieStore] = await Promise.all([
+    getOptionalCurrentMember(),
+    cookies(),
+  ]);
+
+  let unreadActivity = 0;
+  if (member) {
+    const rawSeenAt = cookieStore.get(ACTIVITY_SEEN_COOKIE)?.value;
+    const parsedSeenAt = rawSeenAt ? new Date(rawSeenAt) : null;
+    const seenAt = parsedSeenAt && !Number.isNaN(parsedSeenAt.getTime()) ? parsedSeenAt : null;
+    unreadActivity = await getUnreadActivityCount(member.id, seenAt);
+  }
+
   return (
     <html lang="en">
       <body>
@@ -28,7 +46,16 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             <span>SHIFTPOINT <b>SOCIETY</b></span>
           </Link>
           <nav className="desktopNav" aria-label="Primary navigation">
-            {nav.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
+            {nav.map(([label, href]) => (
+              <Link key={href} href={href}>
+                {label}
+                {href === "/activity" && unreadActivity > 0 && (
+                  <span className="navBadge" aria-label={`${unreadActivity} unread activity items`}>
+                    {unreadActivity > 99 ? "99+" : unreadActivity}
+                  </span>
+                )}
+              </Link>
+            ))}
           </nav>
           <Link className="garageButton" href="/garage">MY GARAGE</Link>
         </header>
