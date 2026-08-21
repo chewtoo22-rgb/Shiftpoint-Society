@@ -1,5 +1,27 @@
 import { db } from "@/lib/db";
 
+export async function getUnreadActivityCount(memberId: string, seenAt: Date | null) {
+  const createdAt = seenAt ? { gt: seenAt } : undefined;
+  const [comments, reactions] = await Promise.all([
+    db.comment.count({
+      where: {
+        authorId: { not: memberId },
+        post: { authorId: memberId },
+        createdAt,
+      },
+    }),
+    db.reaction.count({
+      where: {
+        userId: { not: memberId },
+        post: { authorId: memberId },
+        createdAt,
+      },
+    }),
+  ]);
+
+  return comments + reactions;
+}
+
 export async function getMemberActivity(memberId: string, limit = 40) {
   const [comments, reactions] = await Promise.all([
     db.comment.findMany({
