@@ -9,6 +9,8 @@ import {
   validatePostMediaPublicUrl,
 } from "@/lib/post-media-completion-policy";
 
+const MAX_MEDIA_PER_POST = 4;
+
 export type AuthorizedPostMediaCompletion = {
   postId: string;
   ownerId: string;
@@ -62,4 +64,50 @@ export async function authorizePostMediaCompletion(input: {
     sizeBytes: media.sizeBytes,
     kind: media.kind,
   };
+}
+
+/**
+ * Persists a completed upload only after the full authorization boundary above
+ * succeeds. Repeated completion calls for the same storage object are
+ * idempotent, while attempts to reuse an object key on a different post fail.
+ */
+export async function persistPostMediaCompletion(input: {
+  postId: string;
+  objectKey: string;
+  mediaUrl: string;
+  media: PostMediaCandidate;
+}) {
+  const authorized = await authorizePostMediaCompletion(input);
+
+  const existing = await db.postMedia.findUnique({
+    where: { objectKey: authorized.objectKey },
+  });
+
+  if (existing) {
+    if (existing.postId !== authorized.postId) {
+      throw new Error("Uploaded media object is already attached to another post.");
+    }
+    return existing;
+  }
+
+  const mediaCount = await db.postMedia.count({
+    where: { postId: authorized.postId },
+  });
+
+  if (mediaCount >= MAX_MEDIA_PER_POST) {
+    throw new Error(`Posts support up to ${MAX_MEDIA_PER_POST} media attachments.`);
+  }
+
+  return db.postMedia.create({
+    data: {
+      postId: authorized.postId,
+      objectKey: authorized.objectKey,
+      url: authorized.mediaUrl,
+      type: authorized.kind,
+      mimeType: authorized.mimeType,
+      sizeBytes: authorized.sizeBytes,
+      originalName: authorized.originalName,
+      sortOrder: mediaCount,
+    },
+  });
 }
