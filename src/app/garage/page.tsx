@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { addBuildUpdate } from "@/app/garage/actions";
+import { addInstalledPart } from "@/app/garage/parts/actions";
 import { getPrimaryGarage } from "@/lib/garage-repository";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +43,23 @@ export default async function GaragePage() {
           <input name="title" minLength={3} maxLength={120} required placeholder="What changed?" aria-label="Build update title" />
           <textarea name="body" minLength={3} maxLength={4000} required placeholder="Parts, settings, numbers, results, lessons..." aria-label="Build update details" />
           <button type="submit">LOG UPDATE →</button>
+        </form>
+      </section>
+
+      <section className="buildComposer partsComposer">
+        <div>
+          <div className="sectionKicker">PARTS LEDGER</div>
+          <h2>LOG INSTALLED PART</h2>
+          <p>Build the exact machine history, one installed component at a time.</p>
+        </div>
+        <form action={addInstalledPart}>
+          <input type="hidden" name="carId" value={garage.id} />
+          <input name="brand" maxLength={80} required placeholder="Brand" aria-label="Part brand" />
+          <input name="name" maxLength={140} required placeholder="Part name" aria-label="Part name" />
+          <input name="category" maxLength={80} required placeholder="Category" aria-label="Part category" />
+          <input name="partNumber" maxLength={80} placeholder="Part number (optional)" aria-label="Part number" />
+          <textarea name="notes" maxLength={500} placeholder="Install notes, settings, fitment..." aria-label="Part notes" />
+          <button type="submit">LOG PART →</button>
         </form>
       </section>
 
