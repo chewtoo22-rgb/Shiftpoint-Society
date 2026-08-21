@@ -1,4 +1,4 @@
-import type { PostMediaKind, ValidatedPostMedia } from "@/lib/post-media-policy";
+import type { PostMediaKind, ValidatedPostMedia } from "./post-media-policy";
 
 const MIME_EXTENSIONS: Record<string, string> = {
   "image/avif": "avif",
