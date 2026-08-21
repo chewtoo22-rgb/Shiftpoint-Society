@@ -1,0 +1,228 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  handle      String   @unique
+  displayName String?
+  bio         String?
+  avatarUrl   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  cars        Car[]
+  posts       Post[]
+  comments    Comment[]
+  reactions   Reaction[]
+  events      Event[]   @relation("EventHost")
+  dealSubs    DealSubmission[]
+}
+
+model Car {
+  id        String   @id @default(cuid())
+  ownerId   String
+  year      Int
+  make      String
+  model     String
+  trim      String?
+  nickname  String?
+  drivetrain String?
+  engine    String?
+  powerHp   Int?
+  torqueLbFt Int?
+  quarterMileSeconds Float?
+  quarterMileMph Float?
+  heroImageUrl String?
+  isVerified Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  buildEntries BuildEntry[]
+  carParts   CarPart[]
+  posts      Post[]
+
+  @@index([ownerId])
+  @@index([make, model, year])
+}
+
+model BuildEntry {
+  id          String   @id @default(cuid())
+  carId       String
+  title       String
+  body        String
+  occurredAt  DateTime @default(now())
+  mileage     Int?
+  dynoHp      Int?
+  dynoTorque  Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  car         Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
+  media       BuildMedia[]
+  taggedParts BuildEntryPart[]
+
+  @@index([carId, occurredAt])
+}
+
+model BuildMedia {
+  id           String @id @default(cuid())
+  buildEntryId String
+  url          String
+  type         MediaType
+  caption      String?
+  sortOrder    Int @default(0)
+  buildEntry   BuildEntry @relation(fields: [buildEntryId], references: [id], onDelete: Cascade)
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  DYNO_SHEET
+  DOCUMENT
+}
+
+model Part {
+  id           String @id @default(cuid())
+  brand        String
+  name         String
+  category     String
+  partNumber   String?
+  productUrl   String?
+  carParts     CarPart[]
+  buildEntries BuildEntryPart[]
+  deals        Deal[]
+
+  @@index([brand, name])
+}
+
+model CarPart {
+  carId       String
+  partId      String
+  installedAt DateTime?
+  notes       String?
+  car          Car  @relation(fields: [carId], references: [id], onDelete: Cascade)
+  part         Part @relation(fields: [partId], references: [id], onDelete: Cascade)
+
+  @@id([carId, partId])
+}
+
+model BuildEntryPart {
+  buildEntryId String
+  partId       String
+  buildEntry   BuildEntry @relation(fields: [buildEntryId], references: [id], onDelete: Cascade)
+  part         Part       @relation(fields: [partId], references: [id], onDelete: Cascade)
+
+  @@id([buildEntryId, partId])
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  authorId  String
+  carId     String?
+  body      String
+  kind      PostKind @default(GENERAL)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  car       Car?     @relation(fields: [carId], references: [id], onDelete: SetNull)
+  comments  Comment[]
+  reactions Reaction[]
+
+  @@index([createdAt])
+  @@index([authorId, createdAt])
+}
+
+enum PostKind {
+  GENERAL
+  PULL
+  DYNO
+  INSTALL
+  QUESTION
+  VIDEO
+  EVENT
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  post      Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+}
+
+model Reaction {
+  postId    String
+  userId    String
+  type      ReactionType
+  createdAt DateTime @default(now())
+  post      Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId, type])
+}
+
+enum ReactionType {
+  LIKE
+  FIRE
+  WRENCH
+  RESPECT
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  hostId      String
+  title       String
+  description String?
+  venue       String?
+  city        String
+  region      String?
+  startsAt    DateTime
+  endsAt      DateTime?
+  latitude    Float?
+  longitude   Float?
+  createdAt   DateTime @default(now())
+  host        User @relation("EventHost", fields: [hostId], references: [id], onDelete: Cascade)
+
+  @@index([startsAt])
+  @@index([city, region])
+}
+
+model Deal {
+  id          String   @id @default(cuid())
+  partId      String?
+  merchant    String
+  title       String
+  url         String
+  priceCents  Int?
+  originalPriceCents Int?
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+  part        Part? @relation(fields: [partId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+}
+
+model DealSubmission {
+  id          String   @id @default(cuid())
+  submitterId String
+  merchant    String
+  title       String
+  url         String
+  status      SubmissionStatus @default(PENDING)
+  createdAt   DateTime @default(now())
+  submitter   User @relation(fields: [submitterId], references: [id], onDelete: Cascade)
+}
+
+enum SubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
