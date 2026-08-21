@@ -10,6 +10,24 @@ type SessionMember = {
 };
 
 /**
+ * Read the signed-in Society member without forcing authentication.
+ * Shared chrome can use this to render member-aware UI while public/auth
+ * routes remain accessible.
+ */
+export async function getOptionalCurrentMember() {
+  const session = await auth();
+  const sessionUser = session?.user as SessionMember | undefined;
+
+  if (!sessionUser?.authSubject) {
+    return null;
+  }
+
+  return db.user.findUnique({
+    where: { authSubject: sessionUser.authSubject },
+  });
+}
+
+/**
  * Central identity boundary for every owner-scoped garage read/write.
  * Never accept an owner id from form data.
  *
