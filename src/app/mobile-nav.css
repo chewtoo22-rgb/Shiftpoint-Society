@@ -1,0 +1,16 @@
+.mobileNav{display:none}
+@media(max-width:900px){
+  body{padding-bottom:74px}
+  .mobileNav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(5,1fr);min-height:66px;border-top:1px solid var(--line);background:#080909f2;backdrop-filter:blur(16px);padding-bottom:env(safe-area-inset-bottom)}
+  .mobileNav>a{min-width:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;padding:9px 4px;color:var(--muted);border-right:1px solid #1c1f1f;text-align:center}
+  .mobileNav>a:last-child{border-right:0}
+  .mobileNav>a:hover,.mobileNav>a:focus-visible{color:var(--text);background:#111313;outline:none}
+  .mobileNavKicker{font-size:8px;font-weight:900;letter-spacing:.16em;color:var(--hot)}
+  .mobileNavLabel{display:inline-flex;align-items:center;justify-content:center;gap:4px;max-width:100%;font-size:9px;font-weight:900;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap}
+  .mobileNav .navBadge{min-width:16px;height:16px;padding:0 4px;font-size:8px}
+}
+@media(max-width:420px){
+  .mobileNavKicker{display:none}
+  .mobileNav{min-height:58px}
+  body{padding-bottom:66px}
+}
