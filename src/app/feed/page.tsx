@@ -1,4 +1,5 @@
 import Link from "next/link";
+import styles from "./feed.module.css";
 import { createFeedPost } from "./actions";
 import { getCurrentMember } from "@/lib/current-member";
 import { db } from "@/lib/db";
@@ -27,20 +28,18 @@ export default async function FeedPage() {
 
   return (
     <div className="shell">
-      <section className="feedHeader">
-        <div>
-          <div className="eyebrow">SOCIETY WIRE // LIVE GARAGE ACTIVITY</div>
-          <h1 className="feedTitle">THE FEED</h1>
-          <p className="lead">Build updates, pulls, questions and wrench talk from people who are actually in the garage.</p>
-        </div>
+      <section className={styles.header}>
+        <div className="eyebrow">SOCIETY WIRE // LIVE GARAGE ACTIVITY</div>
+        <h1 className={styles.title}>THE FEED</h1>
+        <p className="lead">Build updates, pulls, questions and wrench talk from people who are actually in the garage.</p>
       </section>
 
-      <section className="feedLayout">
+      <section className={styles.layout}>
         <div>
-          <form action={createFeedPost} className="composer card">
+          <form action={createFeedPost} className={`${styles.composer} card`}>
             <div className="eyebrow">POST TO THE SOCIETY</div>
             <textarea name="body" required maxLength={1200} placeholder="What are you working on?" />
-            <div className="composerRow">
+            <div className={styles.composerRow}>
               <select name="carId" defaultValue="">
                 <option value="">No car attached</option>
                 {cars.map((car) => (
@@ -53,31 +52,31 @@ export default async function FeedPage() {
             </div>
           </form>
 
-          <div className="feedStack">
+          <div className={styles.stack}>
             {posts.length === 0 ? (
-              <article className="card emptyFeed">
+              <article className={`card ${styles.empty}`}>
                 <span className="number">// 00</span>
                 <h2>BE THE FIRST ONE IN</h2>
                 <p>The Society wire is quiet. Drop the first garage update.</p>
               </article>
             ) : posts.map((post) => (
-              <article className="card feedPost" key={post.id}>
-                <header className="postMeta">
+              <article className={`card ${styles.post}`} key={post.id}>
+                <header className={styles.meta}>
                   <div>
-                    <Link href={`/u/${post.author.handle}`} className="postAuthor">
+                    <Link href={`/u/${post.author.handle}`} className={styles.author}>
                       {post.author.displayName || post.author.handle}
                     </Link>
                     <span>@{post.author.handle} · {timeAgo(post.createdAt)}</span>
                   </div>
-                  <span className="postKind">{post.kind}</span>
+                  <span className={styles.kind}>{post.kind}</span>
                 </header>
                 {post.car && (
-                  <Link href={`/u/${post.author.handle}`} className="attachedCar">
+                  <Link href={`/u/${post.author.handle}`} className={styles.car}>
                     {post.car.nickname ? `${post.car.nickname} // ` : ""}{post.car.year} {post.car.make} {post.car.model}
                   </Link>
                 )}
-                <p className="postBody">{post.body}</p>
-                <footer className="postStats">
+                <p className={styles.body}>{post.body}</p>
+                <footer className={styles.stats}>
                   <span>{post.reactions.length} reactions</span>
                   <span>{post.comments.length} comments</span>
                 </footer>
@@ -86,7 +85,7 @@ export default async function FeedPage() {
           </div>
         </div>
 
-        <aside className="feedRail">
+        <aside className={styles.rail}>
           <div className="card">
             <div className="eyebrow">YOUR GARAGE</div>
             <h2>@{member.handle}</h2>
