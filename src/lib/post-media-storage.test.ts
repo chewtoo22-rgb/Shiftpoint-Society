@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { validatePostMediaCandidate } from "@/lib/post-media-policy";
-import { buildPostMediaObjectKey } from "@/lib/post-media-storage";
+import { validatePostMediaCandidate } from "./post-media-policy";
+import { buildPostMediaObjectKey } from "./post-media-storage";
 
 describe("buildPostMediaObjectKey", () => {
   it("scopes uploads to the authenticated member namespace", () => {
