@@ -1,17 +1,33 @@
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 
 /**
- * Phase 0 identity boundary.
- *
- * All garage reads and writes go through this module so the temporary
- * development identity can be replaced by Auth.js without rewriting the
- * domain actions. Never accept an owner id from form data.
+ * Central identity boundary for every owner-scoped garage read/write.
+ * Never accept an owner id from form data.
  */
 export async function getCurrentMember() {
+  const session = await auth();
+  const sessionUser = session?.user as
+    | (typeof session.user & { authSubject?: string; handle?: string })
+    | undefined;
+
+  if (!sessionUser?.authSubject || !sessionUser.handle) {
+    throw new Error("Authentication required");
+  }
+
   return db.user.upsert({
-    where: { handle: "founder" },
-    update: {},
-    create: { handle: "founder", displayName: "Shiftpoint Founder" },
+    where: { authSubject: sessionUser.authSubject },
+    update: {
+      handle: sessionUser.handle,
+      displayName: sessionUser.name ?? undefined,
+      avatarUrl: sessionUser.image ?? undefined,
+    },
+    create: {
+      authSubject: sessionUser.authSubject,
+      handle: sessionUser.handle,
+      displayName: sessionUser.name ?? sessionUser.handle,
+      avatarUrl: sessionUser.image ?? undefined,
+    },
   });
 }
 
