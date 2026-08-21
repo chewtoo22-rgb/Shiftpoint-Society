@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import "./globals.css";
+import "./mobile-nav.css";
 import { getOptionalCurrentMember } from "@/lib/current-member";
 import { getUnreadActivityCount } from "@/lib/activity-repository";
 
