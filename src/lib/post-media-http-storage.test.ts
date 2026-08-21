@@ -48,7 +48,7 @@ describe("validatePostMediaUploadTarget", () => {
 
 describe("HttpPostMediaStorageAdapter", () => {
   it("posts the authorized descriptor to the signer", async () => {
-    const fetchImpl = vi.fn(async () =>
+    const fetchImpl = vi.fn<Parameters<typeof fetch>, ReturnType<typeof fetch>>(async (_input, _init) =>
       new Response(
         JSON.stringify({
           uploadUrl: "https://uploads.example.com/token",
@@ -61,20 +61,22 @@ describe("HttpPostMediaStorageAdapter", () => {
 
     const adapter = new HttpPostMediaStorageAdapter({
       signerUrl: "https://signer.example.com/post-media",
-      fetchImpl: fetchImpl as typeof fetch,
+      fetchImpl,
     });
 
     await adapter.createUploadTarget(descriptor);
 
     expect(fetchImpl).toHaveBeenCalledOnce();
-    expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://signer.example.com/post-media");
-    expect(JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body))).toEqual(descriptor);
+    const [requestUrl, requestInit] = fetchImpl.mock.calls[0]!;
+    expect(requestUrl).toBe("https://signer.example.com/post-media");
+    expect(JSON.parse(String(requestInit?.body))).toEqual(descriptor);
   });
 
   it("fails closed when the signer rejects the request", async () => {
+    const fetchImpl: typeof fetch = async () => new Response("no", { status: 403 });
     const adapter = new HttpPostMediaStorageAdapter({
       signerUrl: "https://signer.example.com/post-media",
-      fetchImpl: (async () => new Response("no", { status: 403 })) as typeof fetch,
+      fetchImpl,
     });
 
     await expect(adapter.createUploadTarget(descriptor)).rejects.toThrow(/403/);
