@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { getCurrentMember } from "@/lib/current-member";
 
 const carSchema = z.object({
   year: z.coerce.number().int().min(1886).max(new Date().getFullYear() + 1),
@@ -17,12 +18,7 @@ const carSchema = z.object({
 
 export async function createGarageCar(formData: FormData) {
   const input = carSchema.parse(Object.fromEntries(formData));
-
-  const owner = await db.user.upsert({
-    where: { handle: "founder" },
-    update: {},
-    create: { handle: "founder", displayName: "Shiftpoint Founder" },
-  });
+  const owner = await getCurrentMember();
 
   await db.car.create({
     data: {
