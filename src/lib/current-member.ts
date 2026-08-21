@@ -1,5 +1,13 @@
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+
+type SessionMember = {
+  authSubject?: string;
+  handle?: string;
+  name?: string | null;
+  image?: string | null;
+};
 
 /**
  * Central identity boundary for every owner-scoped garage read/write.
@@ -7,12 +15,10 @@ import { db } from "@/lib/db";
  */
 export async function getCurrentMember() {
   const session = await auth();
-  const sessionUser = session?.user as
-    | (typeof session.user & { authSubject?: string; handle?: string })
-    | undefined;
+  const sessionUser = session?.user as SessionMember | undefined;
 
   if (!sessionUser?.authSubject || !sessionUser.handle) {
-    throw new Error("Authentication required");
+    redirect("/sign-in");
   }
 
   return db.user.upsert({
