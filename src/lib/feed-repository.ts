@@ -21,9 +21,31 @@ export async function getCommunityFeed(limit = 30) {
           nickname: true,
         },
       },
-      reactions: true,
+      reactions: {
+        select: {
+          userId: true,
+          type: true,
+        },
+      },
       comments: {
-        select: { id: true },
+        orderBy: { createdAt: "asc" },
+        take: 8,
+        select: {
+          id: true,
+          body: true,
+          createdAt: true,
+          author: {
+            select: {
+              handle: true,
+              displayName: true,
+            },
+          },
+        },
+      },
+      _count: {
+        select: {
+          comments: true,
+        },
       },
     },
   });
