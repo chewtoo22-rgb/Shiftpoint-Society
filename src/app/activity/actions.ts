@@ -17,5 +17,3 @@ export async function markActivitySeen() {
   });
   revalidatePath("/activity");
 }
-
-export { ACTIVITY_SEEN_COOKIE };
