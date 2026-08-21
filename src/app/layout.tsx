@@ -9,6 +9,7 @@ export const metadata: Metadata = {
 
 const nav = [
   ["Feed", "/feed"],
+  ["Activity", "/activity"],
   ["Garages", "/garages"],
   ["Builds", "/builds"],
   ["Videos", "/videos"],
