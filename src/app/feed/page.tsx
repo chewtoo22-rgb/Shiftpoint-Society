@@ -67,7 +67,7 @@ export default async function FeedPage() {
                 <p>The Society wire is quiet. Drop the first garage update.</p>
               </article>
             ) : posts.map((post) => (
-              <article className={`card ${styles.post}`} key={post.id}>
+              <article className={`card ${styles.post}`} id={`post-${post.id}`} key={post.id}>
                 <header className={styles.meta}>
                   <div>
                     <Link href={`/u/${post.author.handle}`} className={styles.author}>
