@@ -8,6 +8,7 @@ import { getCurrentMember, requireOwnedCar } from "@/lib/current-member";
 const postSchema = z.object({
   body: z.string().trim().min(1, "Say something first.").max(1200),
   carId: z.string().trim().optional(),
+  kind: z.enum(["GENERAL", "PULL", "DYNO", "INSTALL", "QUESTION", "VIDEO", "EVENT"]),
 });
 
 const commentSchema = z.object({
@@ -25,6 +26,7 @@ export async function createFeedPost(formData: FormData) {
   const parsed = postSchema.safeParse({
     body: formData.get("body"),
     carId: formData.get("carId") || undefined,
+    kind: formData.get("kind") || "GENERAL",
   });
 
   if (!parsed.success) {
@@ -42,7 +44,7 @@ export async function createFeedPost(formData: FormData) {
       authorId: member.id,
       carId,
       body: parsed.data.body,
-      kind: "GENERAL",
+      kind: parsed.data.kind,
     },
   });
 
