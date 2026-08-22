@@ -16,8 +16,8 @@ describe("runPostMediaOrphanDryRunReport", () => {
     const runCleanup = vi.fn(async () => ({
       dryRun: true as const,
       planned: [candidate],
-      deleted: [],
-      reconciled: [],
+      deleted: [] as [],
+      reconciled: [] as [],
     }));
     const info = vi.fn();
     const error = vi.fn();
