@@ -27,6 +27,13 @@ type MediaUploadState = {
   status: "ready" | "uploading" | "uploaded" | "failed";
 };
 
+type UploadTarget = Awaited<ReturnType<typeof requestFeedPostMediaUploads>>[number];
+
+type CachedUpload = {
+  target: UploadTarget;
+  uploaded: boolean;
+};
+
 const postKinds = [
   { value: "GENERAL", label: "GENERAL" },
   { value: "PULL", label: "PULL / RUN" },
@@ -47,6 +54,10 @@ function validateSelectedFiles(files: File[]) {
   );
 }
 
+function fileFingerprint(file: File) {
+  return `${file.name}:${file.type}:${file.size}:${file.lastModified}`;
+}
+
 function statusLabel(status: MediaUploadState["status"]) {
   switch (status) {
     case "uploading":
@@ -63,6 +74,7 @@ function statusLabel(status: MediaUploadState["status"]) {
 export function FeedComposer({ cars }: FeedComposerProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const uploadCacheRef = useRef<Map<string, CachedUpload>>(new Map());
   const [error, setError] = useState<string | null>(null);
   const [mediaSummary, setMediaSummary] = useState<string | null>(null);
   const [mediaIsValid, setMediaIsValid] = useState(true);
@@ -77,6 +89,7 @@ export function FeedComposer({ cars }: FeedComposerProps) {
 
   function handleMediaChange(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.currentTarget.files ?? []);
+    uploadCacheRef.current.clear();
     setError(null);
 
     if (!files.length) {
@@ -122,7 +135,12 @@ export function FeedComposer({ cars }: FeedComposerProps) {
 
     try {
       validateSelectedFiles(files);
-      setUploadStates(files.map((file) => ({ name: file.name, status: "ready" })));
+      setUploadStates(
+        files.map((file) => ({
+          name: file.name,
+          status: uploadCacheRef.current.get(fileFingerprint(file))?.uploaded ? "uploaded" : "ready",
+        })),
+      );
     } catch (caught) {
       setMediaIsValid(false);
       setError(caught instanceof Error ? caught.message : "Selected media is not valid.");
@@ -131,9 +149,14 @@ export function FeedComposer({ cars }: FeedComposerProps) {
 
     startTransition(async () => {
       try {
-        const uploadTargets = files.length
+        const uploadTargets: UploadTarget[] = new Array(files.length);
+        const missingIndexes = files
+          .map((file, index) => ({ file, index, cached: uploadCacheRef.current.get(fileFingerprint(file)) }))
+          .filter(({ cached }) => !cached?.uploaded);
+
+        const freshTargets = missingIndexes.length
           ? await requestFeedPostMediaUploads(
-              files.map((file) => ({
+              missingIndexes.map(({ file }) => ({
                 name: file.name,
                 mimeType: file.type,
                 sizeBytes: file.size,
@@ -141,10 +164,25 @@ export function FeedComposer({ cars }: FeedComposerProps) {
             )
           : [];
 
-        for (let index = 0; index < uploadTargets.length; index += 1) {
-          const target = uploadTargets[index];
+        let freshTargetIndex = 0;
+        for (let index = 0; index < files.length; index += 1) {
           const file = files[index];
-          if (!target || !file) throw new Error("Media upload target mismatch.");
+          if (!file) throw new Error("Media upload file mismatch.");
+
+          const fingerprint = fileFingerprint(file);
+          const cached = uploadCacheRef.current.get(fingerprint);
+          if (cached?.uploaded) {
+            uploadTargets[index] = cached.target;
+            setUploadStatus(index, "uploaded");
+            continue;
+          }
+
+          const target = freshTargets[freshTargetIndex];
+          freshTargetIndex += 1;
+          if (!target) throw new Error("Media upload target mismatch.");
+
+          uploadCacheRef.current.set(fingerprint, { target, uploaded: false });
+          uploadTargets[index] = target;
 
           setUploadStatus(index, "uploading");
           const response = await fetch(target.uploadUrl, {
@@ -154,10 +192,12 @@ export function FeedComposer({ cars }: FeedComposerProps) {
           });
 
           if (!response.ok) {
+            uploadCacheRef.current.delete(fingerprint);
             setUploadStatus(index, "failed");
-            throw new Error(`Media upload failed for ${file.name} (${response.status}).`);
+            throw new Error(`Media upload failed for ${file.name} (${response.status}). Retry will keep files that already uploaded.`);
           }
 
+          uploadCacheRef.current.set(fingerprint, { target, uploaded: true });
           setUploadStatus(index, "uploaded");
         }
 
@@ -172,6 +212,7 @@ export function FeedComposer({ cars }: FeedComposerProps) {
         }
 
         formRef.current?.reset();
+        uploadCacheRef.current.clear();
         setMediaSummary(null);
         setMediaIsValid(true);
         setUploadStates([]);
