@@ -1,6 +1,6 @@
 import Link from "next/link";
 import styles from "./feed.module.css";
-import { addFeedComment, createFeedPost, toggleFeedReaction } from "./actions";
+import { addFeedComment, createFeedPostFromForm, toggleFeedReaction } from "./actions";
 import { getCurrentMember } from "@/lib/current-member";
 import { db } from "@/lib/db";
 import { getCommunityFeed } from "@/lib/feed-repository";
@@ -54,7 +54,7 @@ export default async function FeedPage() {
 
       <section className={styles.layout}>
         <div>
-          <form action={createFeedPost} className={`${styles.composer} card`}>
+          <form action={createFeedPostFromForm} className={`${styles.composer} card`}>
             <div className="eyebrow">POST TO THE SOCIETY</div>
             <textarea name="body" required maxLength={1200} placeholder="What are you working on?" />
             <div className={styles.composerRow}>
