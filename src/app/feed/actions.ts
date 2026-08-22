@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getCurrentMember, requireOwnedCar } from "@/lib/current-member";
+import { createConfiguredPostMediaStorageAdapter } from "@/lib/post-media-http-storage";
+import { POST_MEDIA_LIMITS, type PostMediaCandidate } from "@/lib/post-media-policy";
+import { authorizePostMediaUploads } from "@/lib/post-media-upload";
 
 const postSchema = z.object({
   body: z.string().trim().min(1, "Say something first.").max(1200),
@@ -20,6 +23,16 @@ const reactionSchema = z.object({
   postId: z.string().trim().min(1),
   type: z.enum(["LIKE", "FIRE", "WRENCH", "RESPECT"]),
 });
+
+const postMediaCandidateSchema = z
+  .array(
+    z.object({
+      name: z.string().trim().min(1),
+      mimeType: z.string().trim().min(1),
+      sizeBytes: z.number().int().positive(),
+    }),
+  )
+  .max(POST_MEDIA_LIMITS.maxFilesPerPost);
 
 export async function createFeedPost(formData: FormData) {
   const member = await getCurrentMember();
@@ -49,6 +62,33 @@ export async function createFeedPost(formData: FormData) {
   });
 
   revalidatePath("/feed");
+}
+
+/**
+ * Authenticated server boundary for initiating composer media uploads.
+ * Clients submit file metadata only; member identity is resolved inside
+ * authorizePostMediaUploads and is never accepted from the caller.
+ */
+export async function requestFeedPostMediaUploads(candidates: PostMediaCandidate[]) {
+  const parsed = postMediaCandidateSchema.safeParse(candidates);
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Invalid media upload request");
+  }
+
+  const storage = createConfiguredPostMediaStorageAdapter();
+  const uploads = await authorizePostMediaUploads(parsed.data, storage);
+
+  return uploads.map((upload) => ({
+    uploadUrl: upload.uploadUrl,
+    mediaUrl: upload.mediaUrl,
+    method: upload.method,
+    headers: upload.headers,
+    objectKey: upload.objectKey,
+    originalName: upload.originalName,
+    mimeType: upload.mimeType,
+    sizeBytes: upload.sizeBytes,
+    kind: upload.kind,
+  }));
 }
 
 export async function addFeedComment(formData: FormData) {
