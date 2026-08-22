@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   HttpPostMediaStorageAdapter,
   validatePostMediaUploadTarget,
@@ -48,16 +48,18 @@ describe("validatePostMediaUploadTarget", () => {
 
 describe("HttpPostMediaStorageAdapter", () => {
   it("posts the authorized descriptor to the signer", async () => {
-    const fetchImpl = vi.fn<Parameters<typeof fetch>, ReturnType<typeof fetch>>(async (_input, _init) =>
-      new Response(
+    const calls: Array<[RequestInfo | URL, RequestInit | undefined]> = [];
+    const fetchImpl: typeof fetch = async (input, init) => {
+      calls.push([input, init]);
+      return new Response(
         JSON.stringify({
           uploadUrl: "https://uploads.example.com/token",
           mediaUrl: "https://cdn.example.com/member-1/token.jpg",
           method: "PUT",
         }),
         { status: 200, headers: { "content-type": "application/json" } },
-      ),
-    );
+      );
+    };
 
     const adapter = new HttpPostMediaStorageAdapter({
       signerUrl: "https://signer.example.com/post-media",
@@ -66,8 +68,8 @@ describe("HttpPostMediaStorageAdapter", () => {
 
     await adapter.createUploadTarget(descriptor);
 
-    expect(fetchImpl).toHaveBeenCalledOnce();
-    const [requestUrl, requestInit] = fetchImpl.mock.calls[0]!;
+    expect(calls).toHaveLength(1);
+    const [requestUrl, requestInit] = calls[0]!;
     expect(requestUrl).toBe("https://signer.example.com/post-media");
     expect(JSON.parse(String(requestInit?.body))).toEqual(descriptor);
   });
