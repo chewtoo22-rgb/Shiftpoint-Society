@@ -22,6 +22,11 @@ type FeedComposerProps = {
   cars: ComposerCar[];
 };
 
+type MediaUploadState = {
+  name: string;
+  status: "ready" | "uploading" | "uploaded" | "failed";
+};
+
 const postKinds = [
   { value: "GENERAL", label: "GENERAL" },
   { value: "PULL", label: "PULL / RUN" },
@@ -42,13 +47,33 @@ function validateSelectedFiles(files: File[]) {
   );
 }
 
+function statusLabel(status: MediaUploadState["status"]) {
+  switch (status) {
+    case "uploading":
+      return "UPLOADING";
+    case "uploaded":
+      return "UPLOADED";
+    case "failed":
+      return "FAILED";
+    default:
+      return "READY";
+  }
+}
+
 export function FeedComposer({ cars }: FeedComposerProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [mediaSummary, setMediaSummary] = useState<string | null>(null);
   const [mediaIsValid, setMediaIsValid] = useState(true);
+  const [uploadStates, setUploadStates] = useState<MediaUploadState[]>([]);
   const [isPending, startTransition] = useTransition();
+
+  function setUploadStatus(index: number, status: MediaUploadState["status"]) {
+    setUploadStates((current) =>
+      current.map((item, itemIndex) => (itemIndex === index ? { ...item, status } : item)),
+    );
+  }
 
   function handleMediaChange(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.currentTarget.files ?? []);
@@ -57,6 +82,7 @@ export function FeedComposer({ cars }: FeedComposerProps) {
     if (!files.length) {
       setMediaIsValid(true);
       setMediaSummary(null);
+      setUploadStates([]);
       return;
     }
 
@@ -71,9 +97,11 @@ export function FeedComposer({ cars }: FeedComposerProps) {
 
       setMediaIsValid(true);
       setMediaSummary(`${parts.join(" + ")} ready to upload.`);
+      setUploadStates(files.map((file) => ({ name: file.name, status: "ready" })));
     } catch (caught) {
       setMediaIsValid(false);
       setMediaSummary(null);
+      setUploadStates(files.map((file) => ({ name: file.name, status: "failed" })));
       setError(caught instanceof Error ? caught.message : "Selected media is not valid.");
     }
   }
@@ -94,6 +122,7 @@ export function FeedComposer({ cars }: FeedComposerProps) {
 
     try {
       validateSelectedFiles(files);
+      setUploadStates(files.map((file) => ({ name: file.name, status: "ready" })));
     } catch (caught) {
       setMediaIsValid(false);
       setError(caught instanceof Error ? caught.message : "Selected media is not valid.");
@@ -117,6 +146,7 @@ export function FeedComposer({ cars }: FeedComposerProps) {
           const file = files[index];
           if (!target || !file) throw new Error("Media upload target mismatch.");
 
+          setUploadStatus(index, "uploading");
           const response = await fetch(target.uploadUrl, {
             method: target.method,
             headers: target.headers,
@@ -124,8 +154,11 @@ export function FeedComposer({ cars }: FeedComposerProps) {
           });
 
           if (!response.ok) {
-            throw new Error(`Media upload failed (${response.status}).`);
+            setUploadStatus(index, "failed");
+            throw new Error(`Media upload failed for ${file.name} (${response.status}).`);
           }
+
+          setUploadStatus(index, "uploaded");
         }
 
         formData.delete("media");
@@ -141,6 +174,7 @@ export function FeedComposer({ cars }: FeedComposerProps) {
         formRef.current?.reset();
         setMediaSummary(null);
         setMediaIsValid(true);
+        setUploadStates([]);
         router.refresh();
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : "Could not publish this update.");
@@ -160,10 +194,20 @@ export function FeedComposer({ cars }: FeedComposerProps) {
         onChange={handleMediaChange}
         aria-label={`Attach up to ${POST_MEDIA_LIMITS.maxFilesPerPost} photos or videos`}
         aria-invalid={!mediaIsValid}
+        disabled={isPending}
       />
       {mediaSummary && <p aria-live="polite">{mediaSummary}</p>}
+      {uploadStates.length > 0 && (
+        <ul aria-label="Media upload status" aria-live="polite">
+          {uploadStates.map((item, index) => (
+            <li key={`${item.name}-${index}`}>
+              {item.name} — {statusLabel(item.status)}
+            </li>
+          ))}
+        </ul>
+      )}
       <div className={styles.composerRow}>
-        <select name="carId" defaultValue="">
+        <select name="carId" defaultValue="" disabled={isPending}>
           <option value="">No car attached</option>
           {cars.map((car) => (
             <option key={car.id} value={car.id}>
@@ -171,7 +215,7 @@ export function FeedComposer({ cars }: FeedComposerProps) {
             </option>
           ))}
         </select>
-        <select name="kind" defaultValue="GENERAL" aria-label="Post type">
+        <select name="kind" defaultValue="GENERAL" aria-label="Post type" disabled={isPending}>
           {postKinds.map((kind) => (
             <option key={kind.value} value={kind.value}>{kind.label}</option>
           ))}
