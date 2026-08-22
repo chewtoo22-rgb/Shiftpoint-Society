@@ -22,6 +22,7 @@ model User {
   reactions   Reaction[]
   events      Event[]   @relation("EventHost")
   dealSubs    DealSubmission[]
+  postMediaUploadIntents PostMediaUploadIntent[]
 }
 
 model Car {
@@ -152,6 +153,23 @@ model PostMedia {
   post         Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@index([postId, sortOrder])
+}
+
+model PostMediaUploadIntent {
+  id           String        @id @default(cuid())
+  ownerId      String
+  objectKey    String        @unique
+  mediaUrl     String
+  type         PostMediaType
+  mimeType     String
+  sizeBytes    Int
+  originalName String?
+  createdAt    DateTime      @default(now())
+  attachedAt   DateTime?
+  owner        User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, createdAt])
+  @@index([attachedAt, createdAt])
 }
 
 enum PostMediaType {
