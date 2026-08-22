@@ -75,10 +75,12 @@ export function FeedComposer({ cars }: FeedComposerProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const uploadCacheRef = useRef<Map<string, CachedUpload>>(new Map());
+  const pendingPostIdRef = useRef<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mediaSummary, setMediaSummary] = useState<string | null>(null);
   const [mediaIsValid, setMediaIsValid] = useState(true);
   const [uploadStates, setUploadStates] = useState<MediaUploadState[]>([]);
+  const [hasPendingPost, setHasPendingPost] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   function setUploadStatus(index: number, status: MediaUploadState["status"]) {
@@ -202,31 +204,52 @@ export function FeedComposer({ cars }: FeedComposerProps) {
         }
 
         formData.delete("media");
-        const post = await createFeedPost(formData);
+        let postId = pendingPostIdRef.current;
+        if (!postId) {
+          const post = await createFeedPost(formData);
+          postId = post.id;
+          pendingPostIdRef.current = post.id;
+          setHasPendingPost(true);
+        }
 
         for (const target of uploadTargets) {
           await completeFeedPostMediaUpload({
-            postId: post.id,
+            postId,
             completionToken: target.completionToken,
           });
         }
 
         formRef.current?.reset();
         uploadCacheRef.current.clear();
+        pendingPostIdRef.current = null;
+        setHasPendingPost(false);
         setMediaSummary(null);
         setMediaIsValid(true);
         setUploadStates([]);
         router.refresh();
       } catch (caught) {
-        setError(caught instanceof Error ? caught.message : "Could not publish this update.");
+        const message = caught instanceof Error ? caught.message : "Could not publish this update.";
+        setError(
+          pendingPostIdRef.current
+            ? `Your post was created, but media attachment is incomplete. Retry to finish this same post. ${message}`
+            : message,
+        );
       }
     });
   }
 
+  const lockPostFields = isPending || hasPendingPost;
+
   return (
     <form ref={formRef} onSubmit={handleSubmit} className={`${styles.composer} card`}>
       <div className="eyebrow">POST TO THE SOCIETY</div>
-      <textarea name="body" required maxLength={1200} placeholder="What are you working on?" />
+      <textarea
+        name="body"
+        required
+        maxLength={1200}
+        placeholder="What are you working on?"
+        disabled={lockPostFields}
+      />
       <input
         name="media"
         type="file"
@@ -235,7 +258,7 @@ export function FeedComposer({ cars }: FeedComposerProps) {
         onChange={handleMediaChange}
         aria-label={`Attach up to ${POST_MEDIA_LIMITS.maxFilesPerPost} photos or videos`}
         aria-invalid={!mediaIsValid}
-        disabled={isPending}
+        disabled={lockPostFields}
       />
       {mediaSummary && <p aria-live="polite">{mediaSummary}</p>}
       {uploadStates.length > 0 && (
@@ -248,7 +271,7 @@ export function FeedComposer({ cars }: FeedComposerProps) {
         </ul>
       )}
       <div className={styles.composerRow}>
-        <select name="carId" defaultValue="" disabled={isPending}>
+        <select name="carId" defaultValue="" disabled={lockPostFields}>
           <option value="">No car attached</option>
           {cars.map((car) => (
             <option key={car.id} value={car.id}>
@@ -256,13 +279,13 @@ export function FeedComposer({ cars }: FeedComposerProps) {
             </option>
           ))}
         </select>
-        <select name="kind" defaultValue="GENERAL" aria-label="Post type" disabled={isPending}>
+        <select name="kind" defaultValue="GENERAL" aria-label="Post type" disabled={lockPostFields}>
           {postKinds.map((kind) => (
             <option key={kind.value} value={kind.value}>{kind.label}</option>
           ))}
         </select>
         <button className="cta" type="submit" disabled={isPending || !mediaIsValid}>
-          {isPending ? "UPLOADING…" : "DROP UPDATE →"}
+          {isPending ? "UPLOADING…" : hasPendingPost ? "RETRY MEDIA →" : "DROP UPDATE →"}
         </button>
       </div>
       {error && <p role="alert">{error}</p>}
