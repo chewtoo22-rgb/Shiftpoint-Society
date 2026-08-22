@@ -80,6 +80,15 @@ export async function createFeedPost(formData: FormData) {
 }
 
 /**
+ * HTML form-compatible wrapper. React form actions must resolve to void,
+ * while createFeedPost intentionally returns the server-created post ID for
+ * the richer composer upload flow.
+ */
+export async function createFeedPostFromForm(formData: FormData): Promise<void> {
+  await createFeedPost(formData);
+}
+
+/**
  * Authenticated server boundary for initiating composer media uploads.
  * Clients submit file metadata only; member identity is resolved inside
  * authorizePostMediaUploads and is never accepted from the caller.
