@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getCurrentMember, requireOwnedCar } from "@/lib/current-member";
+import { persistPostMediaCompletion } from "@/lib/post-media-completion";
 import { createConfiguredPostMediaStorageAdapter } from "@/lib/post-media-http-storage";
 import { POST_MEDIA_LIMITS, type PostMediaCandidate } from "@/lib/post-media-policy";
 import { authorizePostMediaUploads } from "@/lib/post-media-upload";
@@ -33,6 +34,17 @@ const postMediaCandidateSchema = z
     }),
   )
   .max(POST_MEDIA_LIMITS.maxFilesPerPost);
+
+const postMediaCompletionSchema = z.object({
+  postId: z.string().trim().min(1),
+  objectKey: z.string().trim().min(1),
+  mediaUrl: z.string().trim().url(),
+  media: z.object({
+    name: z.string().trim().min(1),
+    mimeType: z.string().trim().min(1),
+    sizeBytes: z.number().int().positive(),
+  }),
+});
 
 export async function createFeedPost(formData: FormData) {
   const member = await getCurrentMember();
@@ -89,6 +101,38 @@ export async function requestFeedPostMediaUploads(candidates: PostMediaCandidate
     sizeBytes: upload.sizeBytes,
     kind: upload.kind,
   }));
+}
+
+/**
+ * Authenticated completion boundary for composer uploads. The caller provides
+ * storage metadata only. persistPostMediaCompletion re-resolves the current
+ * member, verifies post authorship and object-key ownership, and then performs
+ * the idempotent PostMedia write.
+ */
+export async function completeFeedPostMediaUpload(input: {
+  postId: string;
+  objectKey: string;
+  mediaUrl: string;
+  media: PostMediaCandidate;
+}) {
+  const parsed = postMediaCompletionSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Invalid media completion request");
+  }
+
+  const media = await persistPostMediaCompletion(parsed.data);
+  revalidatePath("/feed");
+
+  return {
+    id: media.id,
+    postId: media.postId,
+    url: media.url,
+    type: media.type,
+    mimeType: media.mimeType,
+    sizeBytes: media.sizeBytes,
+    originalName: media.originalName,
+    sortOrder: media.sortOrder,
+  };
 }
 
 export async function addFeedComment(formData: FormData) {
