@@ -5,6 +5,10 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { getCurrentMember, requireOwnedCar } from "@/lib/current-member";
 import { persistPostMediaCompletion } from "@/lib/post-media-completion";
+import {
+  createPostMediaCompletionGrant,
+  verifyPostMediaCompletionGrant,
+} from "@/lib/post-media-completion-token";
 import { createConfiguredPostMediaStorageAdapter } from "@/lib/post-media-http-storage";
 import { POST_MEDIA_LIMITS, type PostMediaCandidate } from "@/lib/post-media-policy";
 import { authorizePostMediaUploads } from "@/lib/post-media-upload";
@@ -37,13 +41,7 @@ const postMediaCandidateSchema = z
 
 const postMediaCompletionSchema = z.object({
   postId: z.string().trim().min(1),
-  objectKey: z.string().trim().min(1),
-  mediaUrl: z.string().trim().url(),
-  media: z.object({
-    name: z.string().trim().min(1),
-    mimeType: z.string().trim().min(1),
-    sizeBytes: z.number().int().positive(),
-  }),
+  completionToken: z.string().trim().min(1),
 });
 
 export async function createFeedPost(formData: FormData) {
@@ -92,6 +90,8 @@ export async function createFeedPostFromForm(formData: FormData): Promise<void> 
  * Authenticated server boundary for initiating composer media uploads.
  * Clients submit file metadata only; member identity is resolved inside
  * authorizePostMediaUploads and is never accepted from the caller.
+ * Each returned target carries a short-lived signed completion grant binding
+ * the object key, public URL and validated media metadata to that authorization.
  */
 export async function requestFeedPostMediaUploads(candidates: PostMediaCandidate[]) {
   const parsed = postMediaCandidateSchema.safeParse(candidates);
@@ -112,27 +112,45 @@ export async function requestFeedPostMediaUploads(candidates: PostMediaCandidate
     mimeType: upload.mimeType,
     sizeBytes: upload.sizeBytes,
     kind: upload.kind,
+    completionToken: createPostMediaCompletionGrant({
+      ownerId: upload.ownerId,
+      objectKey: upload.objectKey,
+      mediaUrl: upload.mediaUrl,
+      originalName: upload.originalName,
+      mimeType: upload.mimeType,
+      sizeBytes: upload.sizeBytes,
+      kind: upload.kind,
+    }),
   }));
 }
 
 /**
- * Authenticated completion boundary for composer uploads. The caller provides
- * storage metadata only. persistPostMediaCompletion re-resolves the current
- * member, verifies post authorship and object-key ownership, and then performs
- * the idempotent PostMedia write.
+ * Authenticated completion boundary for composer uploads. The client submits
+ * only the post id plus the signed grant returned at upload authorization.
+ * Object key, public URL and media metadata are recovered from that grant,
+ * then persistPostMediaCompletion re-resolves the member and verifies post and
+ * object-key ownership before writing the idempotent PostMedia record.
  */
 export async function completeFeedPostMediaUpload(input: {
   postId: string;
-  objectKey: string;
-  mediaUrl: string;
-  media: PostMediaCandidate;
+  completionToken: string;
 }) {
   const parsed = postMediaCompletionSchema.safeParse(input);
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? "Invalid media completion request");
   }
 
-  const media = await persistPostMediaCompletion(parsed.data);
+  const grant = verifyPostMediaCompletionGrant(parsed.data.completionToken);
+  const media = await persistPostMediaCompletion({
+    postId: parsed.data.postId,
+    objectKey: grant.objectKey,
+    mediaUrl: grant.mediaUrl,
+    media: {
+      name: grant.originalName,
+      mimeType: grant.mimeType,
+      sizeBytes: grant.sizeBytes,
+    },
+  });
   revalidatePath("/feed");
 
   return {
