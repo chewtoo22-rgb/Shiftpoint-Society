@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { db } from "@/lib/db";
 import { getCurrentMember } from "@/lib/current-member";
 import { validatePostMediaBatch, type PostMediaCandidate } from "@/lib/post-media-policy";
 import {
@@ -20,6 +21,10 @@ export type AuthorizedPostMediaUpload = PostMediaUploadTarget & {
  * Server-side authorization boundary for post media uploads.
  * The owner is always resolved from the authenticated Society session;
  * callers never submit or select an owner id.
+ *
+ * Each successfully issued upload target is also persisted as an intent. That
+ * gives the server an ownership-bound record for future orphan cleanup without
+ * trusting the browser to report which storage objects belong to whom.
  */
 export async function authorizePostMediaUploads(
   candidates: PostMediaCandidate[],
@@ -38,6 +43,18 @@ export async function authorizePostMediaUploads(
         mimeType: item.mimeType,
         sizeBytes: item.sizeBytes,
         kind: item.kind,
+      });
+
+      await db.postMediaUploadIntent.create({
+        data: {
+          ownerId: member.id,
+          objectKey,
+          mediaUrl: target.mediaUrl,
+          type: item.kind,
+          mimeType: item.mimeType,
+          sizeBytes: item.sizeBytes,
+          originalName: item.name,
+        },
       });
 
       return {
