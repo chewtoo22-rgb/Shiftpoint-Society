@@ -64,16 +64,19 @@ export async function createFeedPost(formData: FormData) {
     carId = owned.car.id;
   }
 
-  await db.post.create({
+  const post = await db.post.create({
     data: {
       authorId: member.id,
       carId,
       body: parsed.data.body,
       kind: parsed.data.kind,
     },
+    select: { id: true },
   });
 
   revalidatePath("/feed");
+
+  return { id: post.id };
 }
 
 /**
