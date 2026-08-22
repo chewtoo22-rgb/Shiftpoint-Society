@@ -1,6 +1,7 @@
 import Link from "next/link";
 import styles from "./feed.module.css";
-import { addFeedComment, createFeedPostFromForm, toggleFeedReaction } from "./actions";
+import { addFeedComment, toggleFeedReaction } from "./actions";
+import { FeedComposer } from "./feed-composer";
 import { getCurrentMember } from "@/lib/current-member";
 import { db } from "@/lib/db";
 import { getCommunityFeed } from "@/lib/feed-repository";
@@ -11,16 +12,6 @@ const reactionOptions = [
   { type: "FIRE", label: "FIRE", icon: "🔥" },
   { type: "WRENCH", label: "WRENCH", icon: "🔧" },
   { type: "RESPECT", label: "RESPECT", icon: "🤝" },
-] as const;
-
-const postKinds = [
-  { value: "GENERAL", label: "GENERAL" },
-  { value: "PULL", label: "PULL / RUN" },
-  { value: "DYNO", label: "DYNO" },
-  { value: "INSTALL", label: "INSTALL" },
-  { value: "QUESTION", label: "QUESTION" },
-  { value: "VIDEO", label: "VIDEO" },
-  { value: "EVENT", label: "EVENT" },
 ] as const;
 
 function timeAgo(date: Date) {
@@ -54,26 +45,7 @@ export default async function FeedPage() {
 
       <section className={styles.layout}>
         <div>
-          <form action={createFeedPostFromForm} className={`${styles.composer} card`}>
-            <div className="eyebrow">POST TO THE SOCIETY</div>
-            <textarea name="body" required maxLength={1200} placeholder="What are you working on?" />
-            <div className={styles.composerRow}>
-              <select name="carId" defaultValue="">
-                <option value="">No car attached</option>
-                {cars.map((car) => (
-                  <option key={car.id} value={car.id}>
-                    {car.nickname ? `${car.nickname} — ` : ""}{car.year} {car.make} {car.model}
-                  </option>
-                ))}
-              </select>
-              <select name="kind" defaultValue="GENERAL" aria-label="Post type">
-                {postKinds.map((kind) => (
-                  <option key={kind.value} value={kind.value}>{kind.label}</option>
-                ))}
-              </select>
-              <button className="cta" type="submit">DROP UPDATE →</button>
-            </div>
-          </form>
+          <FeedComposer cars={cars} />
 
           <div className={styles.stack}>
             {posts.length === 0 ? (
