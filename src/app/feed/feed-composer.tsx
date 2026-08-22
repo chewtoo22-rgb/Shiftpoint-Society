@@ -24,7 +24,7 @@ type FeedComposerProps = {
 
 type MediaUploadState = {
   name: string;
-  status: "ready" | "uploading" | "uploaded" | "failed";
+  status: "ready" | "uploading" | "uploaded" | "attaching" | "attached" | "failed";
 };
 
 type UploadTarget = Awaited<ReturnType<typeof requestFeedPostMediaUploads>>[number];
@@ -32,6 +32,7 @@ type UploadTarget = Awaited<ReturnType<typeof requestFeedPostMediaUploads>>[numb
 type CachedUpload = {
   target: UploadTarget;
   uploaded: boolean;
+  completed: boolean;
 };
 
 const postKinds = [
@@ -64,6 +65,10 @@ function statusLabel(status: MediaUploadState["status"]) {
       return "UPLOADING";
     case "uploaded":
       return "UPLOADED";
+    case "attaching":
+      return "ATTACHING";
+    case "attached":
+      return "ATTACHED";
     case "failed":
       return "FAILED";
     default:
@@ -138,10 +143,13 @@ export function FeedComposer({ cars }: FeedComposerProps) {
     try {
       validateSelectedFiles(files);
       setUploadStates(
-        files.map((file) => ({
-          name: file.name,
-          status: uploadCacheRef.current.get(fileFingerprint(file))?.uploaded ? "uploaded" : "ready",
-        })),
+        files.map((file) => {
+          const cached = uploadCacheRef.current.get(fileFingerprint(file));
+          return {
+            name: file.name,
+            status: cached?.completed ? "attached" : cached?.uploaded ? "uploaded" : "ready",
+          };
+        }),
       );
     } catch (caught) {
       setMediaIsValid(false);
@@ -175,7 +183,7 @@ export function FeedComposer({ cars }: FeedComposerProps) {
           const cached = uploadCacheRef.current.get(fingerprint);
           if (cached?.uploaded) {
             uploadTargets[index] = cached.target;
-            setUploadStatus(index, "uploaded");
+            setUploadStatus(index, cached.completed ? "attached" : "uploaded");
             continue;
           }
 
@@ -183,7 +191,7 @@ export function FeedComposer({ cars }: FeedComposerProps) {
           freshTargetIndex += 1;
           if (!target) throw new Error("Media upload target mismatch.");
 
-          uploadCacheRef.current.set(fingerprint, { target, uploaded: false });
+          uploadCacheRef.current.set(fingerprint, { target, uploaded: false, completed: false });
           uploadTargets[index] = target;
 
           setUploadStatus(index, "uploading");
@@ -199,7 +207,7 @@ export function FeedComposer({ cars }: FeedComposerProps) {
             throw new Error(`Media upload failed for ${file.name} (${response.status}). Retry will keep files that already uploaded.`);
           }
 
-          uploadCacheRef.current.set(fingerprint, { target, uploaded: true });
+          uploadCacheRef.current.set(fingerprint, { target, uploaded: true, completed: false });
           setUploadStatus(index, "uploaded");
         }
 
@@ -212,11 +220,31 @@ export function FeedComposer({ cars }: FeedComposerProps) {
           setHasPendingPost(true);
         }
 
-        for (const target of uploadTargets) {
-          await completeFeedPostMediaUpload({
-            postId,
-            completionToken: target.completionToken,
-          });
+        for (let index = 0; index < uploadTargets.length; index += 1) {
+          const target = uploadTargets[index];
+          const file = files[index];
+          if (!target || !file) throw new Error("Media completion target mismatch.");
+
+          const fingerprint = fileFingerprint(file);
+          const cached = uploadCacheRef.current.get(fingerprint);
+          if (cached?.completed) {
+            setUploadStatus(index, "attached");
+            continue;
+          }
+
+          setUploadStatus(index, "attaching");
+          try {
+            await completeFeedPostMediaUpload({
+              postId,
+              completionToken: target.completionToken,
+            });
+          } catch (caught) {
+            setUploadStatus(index, "failed");
+            throw caught;
+          }
+
+          uploadCacheRef.current.set(fingerprint, { target, uploaded: true, completed: true });
+          setUploadStatus(index, "attached");
         }
 
         formRef.current?.reset();
@@ -231,7 +259,7 @@ export function FeedComposer({ cars }: FeedComposerProps) {
         const message = caught instanceof Error ? caught.message : "Could not publish this update.";
         setError(
           pendingPostIdRef.current
-            ? `Your post was created, but media attachment is incomplete. Retry to finish this same post. ${message}`
+            ? `Your post was created, but media attachment is incomplete. Retry to finish only the remaining media on this same post. ${message}`
             : message,
         );
       }
