@@ -75,7 +75,13 @@ export default async function FeedPage() {
                       </Link>
                       <span>@{post.author.handle} · {timeAgo(post.createdAt)}</span>
                     </div>
-                    <span className={styles.kind}>{post.kind}</span>
+                    <Link
+                      href={`/feed/${post.id}`}
+                      className={styles.kind}
+                      aria-label={`Open ${post.kind.toLowerCase()} post detail`}
+                    >
+                      {post.kind} ↗
+                    </Link>
                   </header>
                   {post.car && (
                     <Link href={`/u/${post.author.handle}`} className={styles.car}>
