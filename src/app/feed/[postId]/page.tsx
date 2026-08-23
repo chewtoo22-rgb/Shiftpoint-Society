@@ -52,6 +52,8 @@ export default async function FeedPostPage({ params }: FeedPostPageProps) {
 
   if (!post) notFound();
 
+  const carBuildHref = post.car ? `/u/${post.author.handle}/cars/${post.car.id}` : null;
+
   return (
     <div className="shell">
       <section className={styles.header}>
@@ -73,9 +75,9 @@ export default async function FeedPostPage({ params }: FeedPostPageProps) {
               <span className={styles.kind}>{post.kind}</span>
             </header>
 
-            {post.car && (
-              <Link href={`/u/${post.author.handle}`} className={styles.car}>
-                {post.car.nickname ? `${post.car.nickname} // ` : ""}{post.car.year} {post.car.make} {post.car.model}
+            {post.car && carBuildHref && (
+              <Link href={carBuildHref} className={styles.car}>
+                {post.car.nickname ? `${post.car.nickname} // ` : ""}{post.car.year} {post.car.make} {post.car.model} ↗
               </Link>
             )}
 
@@ -177,7 +179,7 @@ export default async function FeedPostPage({ params }: FeedPostPageProps) {
             <div className="eyebrow">POST CONTEXT</div>
             <h2>{post.media.length} {post.media.length === 1 ? "MEDIA ITEM" : "MEDIA ITEMS"}</h2>
             <p>{post._count.comments} comments · {post.reactions.length} reactions</p>
-            {post.car && (
+            {post.car && carBuildHref && (
               <>
                 <div className="eyebrow">GARAGE CONTEXT</div>
                 <p>
@@ -225,6 +227,7 @@ export default async function FeedPostPage({ params }: FeedPostPageProps) {
                     </div>
                   </>
                 )}
+                <Link className="garageButton" href={carBuildHref}>VIEW FULL BUILD →</Link>
               </>
             )}
             <PostShareButton postId={post.id} authorHandle={post.author.handle} />
