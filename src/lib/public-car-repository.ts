@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { db } from "./db";
 
 export function buildPublicCarLookup(handle: string, carId: string) {
   return {
