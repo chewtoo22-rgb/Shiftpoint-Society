@@ -80,7 +80,7 @@ export default async function ActivityPage() {
                   </div>
                   {isComment && <p>“{item.detail}”</p>}
                   <div className={styles.postPreview}>{item.postBody}</div>
-                  <Link className={styles.threadLink} href={`/feed#post-${item.postId}`}>
+                  <Link className={styles.threadLink} href={`/feed/${item.postId}`}>
                     VIEW THREAD →
                   </Link>
                 </div>
