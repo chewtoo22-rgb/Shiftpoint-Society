@@ -1,11 +1,15 @@
 import { db } from "@/lib/db";
 
+export function buildPublicCarLookup(handle: string, carId: string) {
+  return {
+    id: carId,
+    owner: { handle },
+  };
+}
+
 export async function getPublicCarBuild(handle: string, carId: string) {
   return db.car.findFirst({
-    where: {
-      id: carId,
-      owner: { handle },
-    },
+    where: buildPublicCarLookup(handle, carId),
     select: {
       id: true,
       year: true,
