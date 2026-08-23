@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import styles from "./feed.module.css";
+import styles from "./feed-media-viewer.module.css";
 
 type FeedMediaViewerProps = {
   src: string;
@@ -33,17 +33,17 @@ export function FeedMediaViewer({ src, alt, positionLabel }: FeedMediaViewerProp
     <>
       <button
         type="button"
-        className={styles.mediaViewerTrigger}
+        className={styles.trigger}
         onClick={() => setOpen(true)}
         aria-label={`Open ${alt} fullscreen`}
       >
         <img src={src} alt={alt} loading="lazy" />
-        <span className={styles.mediaViewerHint}>VIEW FULLSCREEN ↗</span>
+        <span className={styles.hint}>VIEW FULLSCREEN ↗</span>
       </button>
 
       {open && (
         <div
-          className={styles.mediaViewerBackdrop}
+          className={styles.backdrop}
           role="dialog"
           aria-modal="true"
           aria-label={alt}
@@ -51,8 +51,8 @@ export function FeedMediaViewer({ src, alt, positionLabel }: FeedMediaViewerProp
             if (event.target === event.currentTarget) setOpen(false);
           }}
         >
-          <div className={styles.mediaViewerPanel}>
-            <div className={styles.mediaViewerBar}>
+          <div className={styles.panel}>
+            <div className={styles.bar}>
               <span>{positionLabel ? `SOCIETY MEDIA // ${positionLabel}` : "SOCIETY MEDIA"}</span>
               <button type="button" onClick={() => setOpen(false)} aria-label="Close media viewer">
                 CLOSE ×
