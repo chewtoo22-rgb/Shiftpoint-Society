@@ -71,7 +71,8 @@ export default async function PublicCarPage({ params }: PublicCarPageProps) {
               <div
                 key={entry.id}
                 id={`build-entry-${entry.id}`}
-                style={{ marginTop: 18, scrollMarginTop: 96 }}
+                className="buildMilestone"
+                aria-label={`Build milestone: ${entry.title}`}
               >
                 <strong>{entry.title}</strong>
                 <p>{formatDate(entry.occurredAt)}</p>
