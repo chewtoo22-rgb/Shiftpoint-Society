@@ -15,11 +15,23 @@ type GalleryItem = {
   positionLabel?: string;
 };
 
+const SWIPE_THRESHOLD_PX = 48;
+
 export function FeedMediaViewer({ src, alt, positionLabel }: FeedMediaViewerProps) {
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const touchStartXRef = useRef<number | null>(null);
   const [open, setOpen] = useState(false);
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
+
+  const showPrevious = () => {
+    setActiveIndex((index) => (index - 1 + galleryItems.length) % galleryItems.length);
+  };
+
+  const showNext = () => {
+    setActiveIndex((index) => (index + 1) % galleryItems.length);
+  };
 
   const openViewer = () => {
     const trigger = triggerRef.current;
@@ -51,11 +63,33 @@ export function FeedMediaViewer({ src, alt, positionLabel }: FeedMediaViewerProp
     if (!open) return;
 
     const previousOverflow = document.body.style.overflow;
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     document.body.style.overflow = "hidden";
+
+    const dialog = dialogRef.current;
+    const focusable = dialog
+      ? Array.from(dialog.querySelectorAll<HTMLElement>("button:not([disabled]), [href], [tabindex]:not([tabindex='-1'])"))
+      : [];
+    focusable[0]?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setOpen(false);
+        return;
+      }
+
+      if (event.key === "Tab" && focusable.length > 0) {
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        const active = document.activeElement;
+
+        if (event.shiftKey && active === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && active === last) {
+          event.preventDefault();
+          first.focus();
+        }
         return;
       }
 
@@ -76,6 +110,7 @@ export function FeedMediaViewer({ src, alt, positionLabel }: FeedMediaViewerProp
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previousOverflow;
+      previouslyFocused?.focus();
     };
   }, [galleryItems.length, open]);
 
@@ -101,6 +136,7 @@ export function FeedMediaViewer({ src, alt, positionLabel }: FeedMediaViewerProp
 
       {open && (
         <div
+          ref={dialogRef}
           className={styles.backdrop}
           role="dialog"
           aria-modal="true"
@@ -111,7 +147,7 @@ export function FeedMediaViewer({ src, alt, positionLabel }: FeedMediaViewerProp
         >
           <div className={styles.panel}>
             <div className={styles.bar}>
-              <span>
+              <span aria-live="polite">
                 {activeItem.positionLabel
                   ? `SOCIETY MEDIA // ${activeItem.positionLabel}`
                   : "SOCIETY MEDIA"}
@@ -120,12 +156,29 @@ export function FeedMediaViewer({ src, alt, positionLabel }: FeedMediaViewerProp
                 CLOSE ×
               </button>
             </div>
-            <div className={styles.stage}>
+            <div
+              className={styles.stage}
+              onTouchStart={(event) => {
+                touchStartXRef.current = event.touches[0]?.clientX ?? null;
+              }}
+              onTouchEnd={(event) => {
+                if (!hasNavigation || touchStartXRef.current === null) return;
+                const endX = event.changedTouches[0]?.clientX;
+                if (endX === undefined) return;
+
+                const deltaX = endX - touchStartXRef.current;
+                touchStartXRef.current = null;
+
+                if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX) return;
+                if (deltaX > 0) showPrevious();
+                else showNext();
+              }}
+            >
               {hasNavigation && (
                 <button
                   type="button"
                   className={`${styles.navButton} ${styles.previous}`}
-                  onClick={() => setActiveIndex((index) => (index - 1 + galleryItems.length) % galleryItems.length)}
+                  onClick={showPrevious}
                   aria-label="Previous image"
                 >
                   ←
@@ -136,7 +189,7 @@ export function FeedMediaViewer({ src, alt, positionLabel }: FeedMediaViewerProp
                 <button
                   type="button"
                   className={`${styles.navButton} ${styles.next}`}
-                  onClick={() => setActiveIndex((index) => (index + 1) % galleryItems.length)}
+                  onClick={showNext}
                   aria-label="Next image"
                 >
                   →
