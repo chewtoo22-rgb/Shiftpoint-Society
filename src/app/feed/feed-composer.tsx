@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useRef, useState, useTransition } from "react";
+import { ChangeEvent, FormEvent, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { POST_MEDIA_LIMITS, validatePostMediaBatch } from "../../lib/post-media-policy";
 import styles from "./feed.module.css";
@@ -25,6 +25,12 @@ type FeedComposerProps = {
 type MediaUploadState = {
   name: string;
   status: "ready" | "uploading" | "uploaded" | "attaching" | "attached" | "failed";
+};
+
+type MediaPreview = {
+  name: string;
+  kind: "IMAGE" | "VIDEO";
+  url: string;
 };
 
 type UploadTarget = Awaited<ReturnType<typeof requestFeedPostMediaUploads>>[number];
@@ -81,12 +87,26 @@ export function FeedComposer({ cars }: FeedComposerProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const uploadCacheRef = useRef<Map<string, CachedUpload>>(new Map());
   const pendingPostIdRef = useRef<string | null>(null);
+  const previewUrlsRef = useRef<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [mediaSummary, setMediaSummary] = useState<string | null>(null);
   const [mediaIsValid, setMediaIsValid] = useState(true);
   const [uploadStates, setUploadStates] = useState<MediaUploadState[]>([]);
+  const [mediaPreviews, setMediaPreviews] = useState<MediaPreview[]>([]);
   const [hasPendingPost, setHasPendingPost] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    return () => {
+      previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, []);
+
+  function clearMediaPreviews() {
+    previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    previewUrlsRef.current = [];
+    setMediaPreviews([]);
+  }
 
   function setUploadStatus(index: number, status: MediaUploadState["status"]) {
     setUploadStates((current) =>
@@ -97,6 +117,7 @@ export function FeedComposer({ cars }: FeedComposerProps) {
   function handleMediaChange(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.currentTarget.files ?? []);
     uploadCacheRef.current.clear();
+    clearMediaPreviews();
     setError(null);
 
     if (!files.length) {
@@ -114,11 +135,22 @@ export function FeedComposer({ cars }: FeedComposerProps) {
         imageCount ? `${imageCount} photo${imageCount === 1 ? "" : "s"}` : null,
         videoCount ? `${videoCount} video${videoCount === 1 ? "" : "s"}` : null,
       ].filter(Boolean);
+      const previews = files.map((file, index) => {
+        const url = URL.createObjectURL(file);
+        previewUrlsRef.current.push(url);
+        return {
+          name: file.name,
+          kind: validated[index]?.kind === "VIDEO" ? "VIDEO" as const : "IMAGE" as const,
+          url,
+        };
+      });
 
       setMediaIsValid(true);
       setMediaSummary(`${parts.join(" + ")} ready to upload.`);
       setUploadStates(files.map((file) => ({ name: file.name, status: "ready" })));
+      setMediaPreviews(previews);
     } catch (caught) {
+      clearMediaPreviews();
       setMediaIsValid(false);
       setMediaSummary(null);
       setUploadStates(files.map((file) => ({ name: file.name, status: "failed" })));
@@ -250,6 +282,7 @@ export function FeedComposer({ cars }: FeedComposerProps) {
         formRef.current?.reset();
         uploadCacheRef.current.clear();
         pendingPostIdRef.current = null;
+        clearMediaPreviews();
         setHasPendingPost(false);
         setMediaSummary(null);
         setMediaIsValid(true);
@@ -289,6 +322,23 @@ export function FeedComposer({ cars }: FeedComposerProps) {
         disabled={lockPostFields}
       />
       {mediaSummary && <p aria-live="polite">{mediaSummary}</p>}
+      {mediaPreviews.length > 0 && (
+        <div className={styles.composerPreviewGrid} data-count={mediaPreviews.length} aria-label="Selected media previews">
+          {mediaPreviews.map((preview, index) => (
+            <figure className={styles.composerPreview} key={`${preview.name}-${index}`}>
+              {preview.kind === "VIDEO" ? (
+                <video src={preview.url} controls preload="metadata" />
+              ) : (
+                <img src={preview.url} alt={`Preview of ${preview.name}`} />
+              )}
+              <figcaption>
+                <span>{preview.kind}</span>
+                <strong title={preview.name}>{preview.name}</strong>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      )}
       {uploadStates.length > 0 && (
         <ul aria-label="Media upload status" aria-live="polite">
           {uploadStates.map((item, index) => (
