@@ -60,6 +60,45 @@ const feedPostInclude = {
   },
 } satisfies Prisma.PostInclude;
 
+const feedPostDetailInclude = {
+  ...feedPostInclude,
+  car: {
+    select: {
+      id: true,
+      year: true,
+      make: true,
+      model: true,
+      trim: true,
+      nickname: true,
+      drivetrain: true,
+      engine: true,
+      powerHp: true,
+      torqueLbFt: true,
+      quarterMileSeconds: true,
+      quarterMileMph: true,
+      heroImageUrl: true,
+      buildEntries: {
+        take: 3,
+        orderBy: { occurredAt: "desc" },
+        select: {
+          id: true,
+          title: true,
+          occurredAt: true,
+          mileage: true,
+          dynoHp: true,
+          dynoTorque: true,
+        },
+      },
+      _count: {
+        select: {
+          buildEntries: true,
+          carParts: true,
+        },
+      },
+    },
+  },
+} satisfies Prisma.PostInclude;
+
 export async function getCommunityFeed(limit = 30) {
   return db.post.findMany({
     take: limit,
@@ -71,6 +110,6 @@ export async function getCommunityFeed(limit = 30) {
 export async function getCommunityFeedPost(postId: string) {
   return db.post.findUnique({
     where: { id: postId },
-    include: feedPostInclude,
+    include: feedPostDetailInclude,
   });
 }
