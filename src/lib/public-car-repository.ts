@@ -59,6 +59,22 @@ export async function getPublicCarBuild(handle: string, carId: string) {
           },
         },
       },
+      posts: {
+        orderBy: { createdAt: "desc" },
+        take: 6,
+        select: {
+          id: true,
+          kind: true,
+          body: true,
+          createdAt: true,
+          _count: {
+            select: {
+              comments: true,
+              reactions: true,
+            },
+          },
+        },
+      },
       _count: {
         select: {
           buildEntries: true,
