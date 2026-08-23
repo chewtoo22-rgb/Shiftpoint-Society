@@ -25,6 +25,14 @@ function timeAgo(date: Date) {
   return `${Math.floor(hours / 24)}d`;
 }
 
+function formatMediaSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  const kilobytes = bytes / 1024;
+  if (kilobytes < 1024) return `${kilobytes.toFixed(kilobytes >= 100 ? 0 : 1)} KB`;
+  const megabytes = kilobytes / 1024;
+  return `${megabytes.toFixed(megabytes >= 100 ? 0 : 1)} MB`;
+}
+
 export default async function FeedPage() {
   const member = await getCurrentMember();
   const [posts, cars] = await Promise.all([
@@ -97,7 +105,9 @@ export default async function FeedPage() {
                             </video>
                           )}
                           <figcaption>
-                            <span>{media.type} // SOCIETY MEDIA</span>
+                            <span>
+                              {media.originalName || `${media.type} // SOCIETY MEDIA`} · {formatMediaSize(media.sizeBytes)}
+                            </span>
                             {post.media.length > 1 && <strong>{index + 1}/{post.media.length}</strong>}
                           </figcaption>
                         </figure>
