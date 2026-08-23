@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getPublicCarBuild } from "@/lib/public-car-repository";
 import { BuildShareButton } from "./build-share-button";
 import { MilestoneShareButton } from "./milestone-share-button";
+import styles from "./page.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -71,7 +72,7 @@ export default async function PublicCarPage({ params }: PublicCarPageProps) {
               <div
                 key={entry.id}
                 id={`build-entry-${entry.id}`}
-                className="buildMilestone"
+                className={styles.buildMilestone}
                 aria-label={`Build milestone: ${entry.title}`}
               >
                 <strong>{entry.title}</strong>
