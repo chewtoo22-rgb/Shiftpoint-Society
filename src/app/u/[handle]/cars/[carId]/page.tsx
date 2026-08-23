@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPublicCarBuild } from "@/lib/public-car-repository";
+import { BuildShareButton } from "./build-share-button";
 
 export const dynamic = "force-dynamic";
 
@@ -27,13 +28,15 @@ export default async function PublicCarPage({ params }: PublicCarPageProps) {
 
   if (!car) notFound();
 
+  const buildName = car.nickname ?? `${car.year} ${car.make} ${car.model}`;
+
   return (
     <div className="shell">
       <section className="hero" style={{ minHeight: "auto", paddingBottom: 42 }}>
         <div>
           <div className="eyebrow">PUBLIC BUILD // @{car.owner.handle.toUpperCase()}</div>
           <h1 style={{ fontSize: "clamp(42px,6vw,80px)" }}>
-            {(car.nickname ?? `${car.year} ${car.make} ${car.model}`).toUpperCase()}
+            {buildName.toUpperCase()}
           </h1>
           <p className="lead">
             {car.year} {car.make} {car.model}{car.trim ? ` ${car.trim}` : ""} · {car.isVerified ? "VERIFIED BUILD" : "ACTIVE BUILD"}
@@ -50,6 +53,9 @@ export default async function PublicCarPage({ params }: PublicCarPageProps) {
             {car.quarterMileSeconds ? car.quarterMileSeconds.toFixed(2) : "—"} <small>1/4 MI</small>
           </div>
           <p>{car._count.buildEntries} updates · {car._count.carParts} parts · {car._count.posts} Society posts</p>
+          <div style={{ marginTop: 18 }}>
+            <BuildShareButton handle={car.owner.handle} carId={car.id} buildName={buildName} />
+          </div>
         </aside>
       </section>
 
