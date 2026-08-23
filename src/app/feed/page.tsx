@@ -2,6 +2,7 @@ import Link from "next/link";
 import styles from "./feed.module.css";
 import { addFeedComment, toggleFeedReaction } from "./actions";
 import { FeedComposer } from "./feed-composer";
+import { FeedMediaViewer } from "./feed-media-viewer";
 import { getCurrentMember } from "@/lib/current-member";
 import { db } from "@/lib/db";
 import { getCommunityFeed } from "@/lib/feed-repository";
@@ -84,10 +85,10 @@ export default async function FeedPage() {
                       {post.media.map((media, index) => (
                         <figure className={styles.persistedMedia} key={media.id}>
                           {media.type === "IMAGE" ? (
-                            <img
+                            <FeedMediaViewer
                               src={media.url}
                               alt={media.originalName || `Shiftpoint post media ${index + 1}`}
-                              loading="lazy"
+                              positionLabel={post.media.length > 1 ? `${index + 1}/${post.media.length}` : undefined}
                             />
                           ) : (
                             <video controls preload="metadata">
