@@ -1,3 +1,5 @@
+import type { Prisma } from "@prisma/client";
+
 import { db } from "@/lib/db";
 
 const feedPostInclude = {
@@ -19,7 +21,7 @@ const feedPostInclude = {
     },
   },
   media: {
-    orderBy: [{ sortOrder: "asc" as const }, { createdAt: "asc" as const }],
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     select: {
       id: true,
       url: true,
@@ -37,7 +39,7 @@ const feedPostInclude = {
     },
   },
   comments: {
-    orderBy: { createdAt: "asc" as const },
+    orderBy: { createdAt: "asc" },
     take: 8,
     select: {
       id: true,
@@ -56,7 +58,7 @@ const feedPostInclude = {
       comments: true,
     },
   },
-} as const;
+} satisfies Prisma.PostInclude;
 
 export async function getCommunityFeed(limit = 30) {
   return db.post.findMany({
