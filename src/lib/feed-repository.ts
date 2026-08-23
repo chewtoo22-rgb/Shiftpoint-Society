@@ -29,6 +29,7 @@ export async function getCommunityFeed(limit = 30) {
           url: true,
           type: true,
           mimeType: true,
+          sizeBytes: true,
           originalName: true,
           sortOrder: true,
         },
