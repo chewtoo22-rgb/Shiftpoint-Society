@@ -76,13 +76,17 @@ export default async function FeedPage() {
                   <p className={styles.body}>{post.body}</p>
 
                   {post.media.length > 0 && (
-                    <div className={styles.mediaGallery} data-count={post.media.length}>
-                      {post.media.map((media) => (
-                        <div className={styles.persistedMedia} key={media.id}>
+                    <div
+                      className={styles.mediaGallery}
+                      data-count={post.media.length}
+                      aria-label={`${post.media.length} media ${post.media.length === 1 ? "item" : "items"}`}
+                    >
+                      {post.media.map((media, index) => (
+                        <figure className={styles.persistedMedia} key={media.id}>
                           {media.type === "IMAGE" ? (
                             <img
                               src={media.url}
-                              alt={media.originalName || "Shiftpoint post media"}
+                              alt={media.originalName || `Shiftpoint post media ${index + 1}`}
                               loading="lazy"
                             />
                           ) : (
@@ -91,8 +95,11 @@ export default async function FeedPage() {
                               Your browser does not support this video.
                             </video>
                           )}
-                          <span>{media.type} // SOCIETY MEDIA</span>
-                        </div>
+                          <figcaption>
+                            <span>{media.type} // SOCIETY MEDIA</span>
+                            {post.media.length > 1 && <strong>{index + 1}/{post.media.length}</strong>}
+                          </figcaption>
+                        </figure>
                       ))}
                     </div>
                   )}
