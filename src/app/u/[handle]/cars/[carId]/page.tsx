@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPublicCarBuild } from "@/lib/public-car-repository";
 import { BuildShareButton } from "./build-share-button";
+import { MilestoneShareButton } from "./milestone-share-button";
 
 export const dynamic = "force-dynamic";
 
@@ -67,7 +68,11 @@ export default async function PublicCarPage({ params }: PublicCarPageProps) {
             <p>No build updates logged yet.</p>
           ) : (
             car.buildEntries.map((entry) => (
-              <div key={entry.id} style={{ marginTop: 18 }}>
+              <div
+                key={entry.id}
+                id={`build-entry-${entry.id}`}
+                style={{ marginTop: 18, scrollMarginTop: 96 }}
+              >
                 <strong>{entry.title}</strong>
                 <p>{formatDate(entry.occurredAt)}</p>
                 <p>{entry.body}</p>
@@ -80,6 +85,9 @@ export default async function PublicCarPage({ params }: PublicCarPageProps) {
                     {entry.mileage ? `${entry.mileage.toLocaleString()} mi` : ""}
                   </p>
                 )}
+                <div style={{ marginTop: 10 }}>
+                  <MilestoneShareButton entryId={entry.id} title={entry.title} buildName={buildName} />
+                </div>
               </div>
             ))
           )}
