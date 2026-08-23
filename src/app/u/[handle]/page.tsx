@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPublicMemberProfile } from "@/lib/member-profile-repository";
 
@@ -34,14 +35,15 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
       <h2 className="sectionTitle">THE GARAGE</h2>
       <section className="grid">
         {member.cars.map((car) => (
-          <article className="card" key={car.id}>
+          <Link className="card" href={`/u/${member.handle}/cars/${car.id}`} key={car.id}>
             <span className="number">// {car.isVerified ? "VERIFIED BUILD" : "ACTIVE BUILD"}</span>
             <h2>{car.year} {car.make} {car.model}</h2>
             <p>{car.nickname ? `“${car.nickname}” · ` : ""}{car.trim ?? ""}</p>
             <p>{car.engine ?? "ENGINE NOT LOGGED"} · {car.drivetrain ?? "DRIVETRAIN NOT LOGGED"}</p>
             <p><strong>{car.powerHp ? `${car.powerHp} HP` : "POWER TBD"}</strong></p>
             <p>{car._count.buildEntries} build updates · {car._count.carParts} parts logged</p>
-          </article>
+            <span className="garageButton">VIEW BUILD →</span>
+          </Link>
         ))}
       </section>
     </div>
