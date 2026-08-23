@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import styles from "../feed.module.css";
 import { FeedMediaViewer } from "../feed-media-viewer";
 import { addFeedComment, toggleFeedReaction } from "../actions";
+import { PostShareButton } from "./post-share-button";
 import { getCurrentMember } from "@/lib/current-member";
 import { getCommunityFeedPost } from "@/lib/feed-repository";
 
@@ -168,6 +169,12 @@ export default async function FeedPostPage({ params }: FeedPostPageProps) {
             <div className="eyebrow">POST CONTEXT</div>
             <h2>{post.media.length} {post.media.length === 1 ? "MEDIA ITEM" : "MEDIA ITEMS"}</h2>
             <p>{post._count.comments} comments · {post.reactions.length} reactions</p>
+            {post.car && (
+              <p>
+                {post.car.nickname ? `${post.car.nickname} // ` : ""}{post.car.year} {post.car.make} {post.car.model}
+              </p>
+            )}
+            <PostShareButton postId={post.id} authorHandle={post.author.handle} />
             <Link className="garageButton" href={`/feed#post-${post.id}`}>BACK TO FEED</Link>
           </div>
         </aside>
