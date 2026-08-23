@@ -36,6 +36,14 @@ function formatMediaSize(bytes: number) {
   return `${megabytes.toFixed(megabytes >= 100 ? 0 : 1)} MB`;
 }
 
+function formatBuildDate(date: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function FeedPostPage({ params }: FeedPostPageProps) {
@@ -170,9 +178,54 @@ export default async function FeedPostPage({ params }: FeedPostPageProps) {
             <h2>{post.media.length} {post.media.length === 1 ? "MEDIA ITEM" : "MEDIA ITEMS"}</h2>
             <p>{post._count.comments} comments · {post.reactions.length} reactions</p>
             {post.car && (
-              <p>
-                {post.car.nickname ? `${post.car.nickname} // ` : ""}{post.car.year} {post.car.make} {post.car.model}
-              </p>
+              <>
+                <div className="eyebrow">GARAGE CONTEXT</div>
+                <p>
+                  {post.car.nickname ? `${post.car.nickname} // ` : ""}{post.car.year} {post.car.make} {post.car.model}{post.car.trim ? ` ${post.car.trim}` : ""}
+                </p>
+                {(post.car.engine || post.car.drivetrain) && (
+                  <p>{[post.car.engine, post.car.drivetrain].filter(Boolean).join(" · ")}</p>
+                )}
+                {(post.car.powerHp || post.car.torqueLbFt) && (
+                  <p>
+                    {post.car.powerHp ? `${post.car.powerHp} hp` : ""}
+                    {post.car.powerHp && post.car.torqueLbFt ? " · " : ""}
+                    {post.car.torqueLbFt ? `${post.car.torqueLbFt} lb-ft` : ""}
+                  </p>
+                )}
+                {(post.car.quarterMileSeconds || post.car.quarterMileMph) && (
+                  <p>
+                    1/4 mile: {post.car.quarterMileSeconds ? `${post.car.quarterMileSeconds.toFixed(2)}s` : "—"}
+                    {post.car.quarterMileMph ? ` @ ${post.car.quarterMileMph.toFixed(1)} mph` : ""}
+                  </p>
+                )}
+                <p>{post.car._count.buildEntries} build updates · {post.car._count.carParts} tracked parts</p>
+
+                {post.car.buildEntries.length > 0 && (
+                  <>
+                    <div className="eyebrow">LATEST BUILD LOG</div>
+                    <div className={styles.commentStack}>
+                      {post.car.buildEntries.map((entry) => (
+                        <div className={styles.comment} key={entry.id}>
+                          <div>
+                            <strong>{entry.title}</strong>
+                            <span>{formatBuildDate(entry.occurredAt)}</span>
+                          </div>
+                          {(entry.dynoHp || entry.dynoTorque || entry.mileage) && (
+                            <p>
+                              {entry.dynoHp ? `${entry.dynoHp} hp` : ""}
+                              {entry.dynoHp && entry.dynoTorque ? " · " : ""}
+                              {entry.dynoTorque ? `${entry.dynoTorque} lb-ft` : ""}
+                              {(entry.dynoHp || entry.dynoTorque) && entry.mileage ? " · " : ""}
+                              {entry.mileage ? `${entry.mileage.toLocaleString()} mi` : ""}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
             )}
             <PostShareButton postId={post.id} authorHandle={post.author.handle} />
             <Link className="garageButton" href={`/feed#post-${post.id}`}>BACK TO FEED</Link>
