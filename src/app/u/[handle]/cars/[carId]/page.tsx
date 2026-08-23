@@ -68,30 +68,48 @@ export default async function PublicCarPage({ params }: PublicCarPageProps) {
           {car.buildEntries.length === 0 ? (
             <p>No build updates logged yet.</p>
           ) : (
-            car.buildEntries.map((entry) => (
-              <div
-                key={entry.id}
-                id={`build-entry-${entry.id}`}
-                className={styles.buildMilestone}
-                aria-label={`Build milestone: ${entry.title}`}
-              >
-                <strong>{entry.title}</strong>
-                <p>{formatDate(entry.occurredAt)}</p>
-                <p>{entry.body}</p>
-                {(entry.dynoHp || entry.dynoTorque || entry.mileage) && (
-                  <p>
-                    {entry.dynoHp ? `${entry.dynoHp} hp` : ""}
-                    {entry.dynoHp && entry.dynoTorque ? " · " : ""}
-                    {entry.dynoTorque ? `${entry.dynoTorque} lb-ft` : ""}
-                    {(entry.dynoHp || entry.dynoTorque) && entry.mileage ? " · " : ""}
-                    {entry.mileage ? `${entry.mileage.toLocaleString()} mi` : ""}
-                  </p>
-                )}
-                <div style={{ marginTop: 10 }}>
-                  <MilestoneShareButton entryId={entry.id} title={entry.title} buildName={buildName} />
+            <>
+              <nav aria-label="Build milestone navigation" style={{ marginTop: 18 }}>
+                <div className="eyebrow">JUMP TO MILESTONE</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
+                  {car.buildEntries.map((entry, index) => (
+                    <a
+                      key={entry.id}
+                      className="garageButton"
+                      href={`#build-entry-${entry.id}`}
+                      aria-label={`Jump to build milestone ${index + 1}: ${entry.title}`}
+                    >
+                      {index + 1}. {entry.title}
+                    </a>
+                  ))}
                 </div>
-              </div>
-            ))
+              </nav>
+
+              {car.buildEntries.map((entry) => (
+                <div
+                  key={entry.id}
+                  id={`build-entry-${entry.id}`}
+                  className={styles.buildMilestone}
+                  aria-label={`Build milestone: ${entry.title}`}
+                >
+                  <strong>{entry.title}</strong>
+                  <p>{formatDate(entry.occurredAt)}</p>
+                  <p>{entry.body}</p>
+                  {(entry.dynoHp || entry.dynoTorque || entry.mileage) && (
+                    <p>
+                      {entry.dynoHp ? `${entry.dynoHp} hp` : ""}
+                      {entry.dynoHp && entry.dynoTorque ? " · " : ""}
+                      {entry.dynoTorque ? `${entry.dynoTorque} lb-ft` : ""}
+                      {(entry.dynoHp || entry.dynoTorque) && entry.mileage ? " · " : ""}
+                      {entry.mileage ? `${entry.mileage.toLocaleString()} mi` : ""}
+                    </p>
+                  )}
+                  <div style={{ marginTop: 10 }}>
+                    <MilestoneShareButton entryId={entry.id} title={entry.title} buildName={buildName} />
+                  </div>
+                </div>
+              ))}
+            </>
           )}
         </article>
 
