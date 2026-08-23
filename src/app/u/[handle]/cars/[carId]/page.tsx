@@ -16,6 +16,11 @@ function formatDate(date: Date) {
   }).format(date);
 }
 
+function summarizePost(body: string) {
+  const normalized = body.replace(/\s+/g, " ").trim();
+  return normalized.length > 180 ? `${normalized.slice(0, 177)}...` : normalized;
+}
+
 export default async function PublicCarPage({ params }: PublicCarPageProps) {
   const { handle, carId } = await params;
   const car = await getPublicCarBuild(handle, carId);
@@ -88,6 +93,34 @@ export default async function PublicCarPage({ params }: PublicCarPageProps) {
                 {notes && <p>{notes}</p>}
               </div>
             ))
+          )}
+        </article>
+      </section>
+
+      <section style={{ marginTop: 28 }}>
+        <article className="card">
+          <span className="number">// SOCIETY ACTIVITY</span>
+          <h2>RECENT POSTS ABOUT THIS BUILD</h2>
+          {car.posts.length === 0 ? (
+            <p>No Society posts have been attached to this build yet.</p>
+          ) : (
+            <div style={{ display: "grid", gap: 16, marginTop: 18 }}>
+              {car.posts.map((post) => (
+                <Link
+                  key={post.id}
+                  href={`/feed/${post.id}`}
+                  style={{ color: "inherit", textDecoration: "none" }}
+                >
+                  <div className="heroPanel" style={{ padding: 18 }}>
+                    <div className="eyebrow">{post.kind} // {formatDate(post.createdAt)}</div>
+                    <p style={{ marginTop: 10 }}>{summarizePost(post.body)}</p>
+                    <p style={{ marginTop: 10 }}>
+                      {post._count.reactions} reactions · {post._count.comments} comments · VIEW POST →
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
           )}
         </article>
       </section>
