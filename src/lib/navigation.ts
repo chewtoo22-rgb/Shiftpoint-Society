@@ -6,3 +6,7 @@ export const primaryNavigation = [
 ] as const;
 
 export type PrimaryNavigationItem = (typeof primaryNavigation)[number];
+
+export function isPrimaryNavigationActive(pathname: string, href: PrimaryNavigationItem["href"]) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
