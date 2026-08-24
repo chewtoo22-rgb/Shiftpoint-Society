@@ -48,6 +48,9 @@ vi.mock("@/lib/post-media-completion-token", () => ({
 vi.mock("@/lib/post-media-http-storage", () => ({
   createConfiguredPostMediaStorageAdapter: mocks.createConfiguredPostMediaStorageAdapter,
 }));
+vi.mock("@/lib/post-media-policy", () => ({
+  POST_MEDIA_LIMITS: { maxFilesPerPost: 4 },
+}));
 vi.mock("@/lib/post-media-upload", () => ({
   authorizePostMediaUploads: mocks.authorizePostMediaUploads,
 }));
