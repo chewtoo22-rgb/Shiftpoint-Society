@@ -41,13 +41,23 @@ describe("garage repository authentication boundary", () => {
     expect(mocks.carFindMany).not.toHaveBeenCalled();
   });
 
-  it("pins an explicitly selected car to the authenticated owner", async () => {
+  it("pins an explicitly selected car to the authenticated owner and fails closed when absent", async () => {
     mocks.getCurrentMember.mockResolvedValue({ id: "member-1" });
     mocks.carFindFirst.mockResolvedValue(null);
 
-    await expect(getGarage("car-from-request")).resolves.toEqual(demoGarage);
+    await expect(getGarage("car-from-request")).resolves.toBeNull();
     expect(mocks.carFindFirst).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: "car-from-request", ownerId: "member-1" } }),
+    );
+  });
+
+  it("still uses demo garage data when an authenticated member has no persisted cars yet", async () => {
+    mocks.getCurrentMember.mockResolvedValue({ id: "member-1" });
+    mocks.carFindFirst.mockResolvedValue(null);
+
+    await expect(getGarage()).resolves.toEqual(demoGarage);
+    expect(mocks.carFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { ownerId: "member-1" } }),
     );
   });
 
