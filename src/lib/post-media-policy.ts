@@ -22,6 +22,8 @@ export type ValidatedPostMedia = PostMediaCandidate & {
   kind: PostMediaKind;
 };
 
+const FILE_NAME_BIDI_CONTROLS = /[\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/u;
+
 export function validatePostMediaCandidate(candidate: PostMediaCandidate): ValidatedPostMedia {
   const name = candidate.name.trim();
   const mimeType = candidate.mimeType.trim().toLowerCase();
@@ -36,6 +38,14 @@ export function validatePostMediaCandidate(candidate: PostMediaCandidate): Valid
 
   if (/\p{Cc}/u.test(name)) {
     throw new Error("Media file name contains invalid control characters.");
+  }
+
+  if (FILE_NAME_BIDI_CONTROLS.test(name)) {
+    throw new Error("Media file name contains unsafe bidirectional characters.");
+  }
+
+  if (/[\\/]/u.test(name)) {
+    throw new Error("Media file name must not contain path separators.");
   }
 
   if (!Number.isSafeInteger(candidate.sizeBytes) || candidate.sizeBytes <= 0) {
