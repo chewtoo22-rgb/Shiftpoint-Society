@@ -23,6 +23,51 @@ function sign(payload: string) {
   return createHmac("sha256", secret()).update(payload).digest("base64url");
 }
 
+function parseGrantPayload(payload: string): PostMediaCompletionGrant {
+  let value: unknown;
+  try {
+    value = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+  } catch {
+    throw new Error("Invalid media completion grant.");
+  }
+
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("Invalid media completion grant.");
+  }
+
+  const grant = value as Record<string, unknown>;
+  const keys = Object.keys(grant).sort();
+  const expectedKeys = [
+    "expiresAt",
+    "kind",
+    "mediaUrl",
+    "mimeType",
+    "objectKey",
+    "originalName",
+    "ownerId",
+    "sizeBytes",
+  ].sort();
+
+  if (keys.length !== expectedKeys.length || keys.some((key, index) => key !== expectedKeys[index])) {
+    throw new Error("Invalid media completion grant.");
+  }
+
+  if (
+    typeof grant.ownerId !== "string" || !grant.ownerId.trim() ||
+    typeof grant.objectKey !== "string" || !grant.objectKey.trim() ||
+    typeof grant.mediaUrl !== "string" || !grant.mediaUrl.trim() ||
+    typeof grant.originalName !== "string" || !grant.originalName.trim() ||
+    typeof grant.mimeType !== "string" || !grant.mimeType.trim() ||
+    !Number.isSafeInteger(grant.sizeBytes) || Number(grant.sizeBytes) <= 0 ||
+    (grant.kind !== "IMAGE" && grant.kind !== "VIDEO") ||
+    typeof grant.expiresAt !== "number" || !Number.isFinite(grant.expiresAt)
+  ) {
+    throw new Error("Invalid media completion grant.");
+  }
+
+  return grant as unknown as PostMediaCompletionGrant;
+}
+
 export function createPostMediaCompletionGrant(
   input: Omit<PostMediaCompletionGrant, "expiresAt">,
   now = Date.now(),
@@ -46,14 +91,9 @@ export function verifyPostMediaCompletionGrant(token: string, now = Date.now()):
     throw new Error("Invalid media completion grant.");
   }
 
-  let grant: PostMediaCompletionGrant;
-  try {
-    grant = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as PostMediaCompletionGrant;
-  } catch {
-    throw new Error("Invalid media completion grant.");
-  }
+  const grant = parseGrantPayload(payload);
 
-  if (!Number.isFinite(grant.expiresAt) || grant.expiresAt < now) {
+  if (grant.expiresAt <= now) {
     throw new Error("Media completion grant expired.");
   }
 
