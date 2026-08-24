@@ -9,6 +9,13 @@ describe("buildPublicCarLookup", () => {
     });
   });
 
+  it("canonicalizes the public owner handle without weakening car scoping", () => {
+    expect(buildPublicCarLookup("  Boosted_SVT  ", "car-123")).toEqual({
+      id: "car-123",
+      owner: { handle: "boosted_svt" },
+    });
+  });
+
   it("keeps owner handles isolated between otherwise identical car lookups", () => {
     expect(buildPublicCarLookup("member-a", "car-123")).not.toEqual(
       buildPublicCarLookup("member-b", "car-123"),
