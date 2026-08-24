@@ -3,11 +3,11 @@ import { getCurrentMember } from "@/lib/current-member";
 import {
   validatePostMediaCandidate,
   type PostMediaCandidate,
-} from "@/lib/post-media-policy";
+} from "./post-media-policy";
 import {
   assertOwnedPostMediaObjectKey,
   validatePostMediaPublicUrl,
-} from "@/lib/post-media-completion-policy";
+} from "./post-media-completion-policy";
 
 const MAX_MEDIA_PER_POST = 4;
 
