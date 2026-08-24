@@ -1,8 +1,12 @@
-import { db } from "@/lib/db";
+import { db } from "./db";
+
+export function buildPublicMemberLookup(handle: string) {
+  return { handle };
+}
 
 export async function getPublicMemberProfile(handle: string) {
   const member = await db.user.findUnique({
-    where: { handle },
+    where: buildPublicMemberLookup(handle),
     select: {
       handle: true,
       displayName: true,
