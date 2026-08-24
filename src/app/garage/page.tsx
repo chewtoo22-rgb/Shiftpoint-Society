@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { addBuildUpdate } from "@/app/garage/actions";
 import { addInstalledPart } from "@/app/garage/parts/actions";
 import { getGarage, getGarageSwitcher } from "@/lib/garage-repository";
@@ -16,6 +17,10 @@ export default async function GaragePage({ searchParams }: GaragePageProps) {
     getGarage(selectedCarId),
     getGarageSwitcher(),
   ]);
+
+  if (!garage) {
+    redirect("/garage");
+  }
 
   return (
     <div className="shell garageShell">
