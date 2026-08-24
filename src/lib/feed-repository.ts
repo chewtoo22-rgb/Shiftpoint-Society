@@ -1,6 +1,10 @@
 import type { Prisma } from "@prisma/client";
 
-import { db } from "@/lib/db";
+import { db } from "./db";
+
+export function buildCommunityFeedPostWhere(postId: string): Prisma.PostWhereUniqueInput {
+  return { id: postId };
+}
 
 const feedPostInclude = {
   author: {
@@ -109,7 +113,7 @@ export async function getCommunityFeed(limit = 30) {
 
 export async function getCommunityFeedPost(postId: string) {
   return db.post.findUnique({
-    where: { id: postId },
+    where: buildCommunityFeedPostWhere(postId),
     include: feedPostDetailInclude,
   });
 }
