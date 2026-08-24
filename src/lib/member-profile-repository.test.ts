@@ -6,6 +6,12 @@ describe("buildPublicMemberLookup", () => {
     expect(buildPublicMemberLookup("matt")).toEqual({ handle: "matt" });
   });
 
+  it("canonicalizes public profile handles before lookup", () => {
+    expect(buildPublicMemberLookup("  Boosted_SVT  ")).toEqual({
+      handle: "boosted_svt",
+    });
+  });
+
   it("keeps otherwise identical profile lookups isolated by handle", () => {
     expect(buildPublicMemberLookup("member-a")).not.toEqual(
       buildPublicMemberLookup("member-b"),
