@@ -1,4 +1,4 @@
-const securityHeaders = [
+export const securityHeaders = [
   {
     key: "X-Content-Type-Options",
     value: "nosniff",
