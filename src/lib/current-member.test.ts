@@ -97,11 +97,11 @@ describe("current member identity boundaries", () => {
     expect(update).not.toHaveProperty("authSubject");
   });
 
-  it("bootstraps a new member from trusted session identity only", async () => {
+  it("bootstraps a new member from trusted session identity with a canonical handle", async () => {
     mocks.auth.mockResolvedValue({
       user: {
         authSubject: "provider:456",
-        handle: "bootstrap-handle",
+        handle: "Bootstrap-Handle",
         name: "Bootstrap Name",
         image: null,
       },
@@ -119,6 +119,19 @@ describe("current member identity boundaries", () => {
         avatarUrl: undefined,
       },
     });
+  });
+
+  it("fails closed instead of persisting an invalid provider bootstrap handle", async () => {
+    mocks.auth.mockResolvedValue({
+      user: {
+        authSubject: "provider:invalid",
+        handle: "bad provider handle",
+      },
+    });
+    mocks.userFindUnique.mockResolvedValue(null);
+
+    await expect(getCurrentMember()).rejects.toThrow("Invalid Society handle");
+    expect(mocks.userCreate).not.toHaveBeenCalled();
   });
 
   it("scopes owned-car lookup to the authenticated member id", async () => {
