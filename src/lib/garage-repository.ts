@@ -62,13 +62,19 @@ function toGarageViewModel(car: NonNullable<GarageRecord>): GarageViewModel {
   };
 }
 
-export async function getGarage(carId?: string): Promise<GarageViewModel> {
+export async function getGarage(carId?: string): Promise<GarageViewModel | null> {
   // Resolve identity before entering the database-fallback boundary. Redirects and
   // other authentication failures must never be swallowed into demo garage data.
   const member = await getCurrentMember();
 
   try {
     const car = await loadCar(member.id, carId);
+
+    // An explicit car selection is request-controlled. If it does not resolve inside
+    // the authenticated member's ownership scope, fail closed instead of rendering
+    // demo data that could make a foreign/unknown identifier look like a real garage.
+    if (!car && carId) return null;
+
     return car ? toGarageViewModel(car) : demoGarage;
   } catch {
     // Phase 0 fallback keeps an authenticated garage usable before a database is attached.
@@ -99,5 +105,5 @@ export async function getGarageSwitcher() {
 }
 
 export async function getPrimaryGarage(): Promise<GarageViewModel> {
-  return getGarage();
+  return (await getGarage()) ?? demoGarage;
 }
