@@ -38,6 +38,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   return (
     <html lang="en">
       <body>
+        <a className="skipLink" href="#main-content">SKIP TO CONTENT</a>
         <header className="siteHeader">
           <Link className="brand" href="/">
             <span className="brandMark">SP</span>
@@ -53,7 +54,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
           </nav>
           <Link className="garageButton" href="/garage">MY GARAGE</Link>
         </header>
-        <main>{children}</main>
+        <main id="main-content" tabIndex={-1}>{children}</main>
         <footer className="footer">
           <span>SHIFTPOINT SOCIETY</span>
           <span>BUILT FOR PEOPLE WHO WRENCH.</span>
