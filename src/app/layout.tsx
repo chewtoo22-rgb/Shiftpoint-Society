@@ -3,10 +3,10 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import "./globals.css";
 import "./mobile-nav.css";
+import { DesktopNav } from "./desktop-nav";
 import { MobileNav } from "./mobile-nav";
 import { getOptionalCurrentMember } from "@/lib/current-member";
 import { getUnreadActivityCount } from "@/lib/activity-repository";
-import { primaryNavigation } from "@/lib/navigation";
 
 export const metadata: Metadata = {
   title: "Shiftpoint Society",
@@ -29,12 +29,6 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     unreadActivity = await getUnreadActivityCount(member.id, seenAt);
   }
 
-  const activityBadge = unreadActivity > 0 ? (
-    <span className="navBadge" aria-label={`${unreadActivity} unread activity items`}>
-      {unreadActivity > 99 ? "99+" : unreadActivity}
-    </span>
-  ) : null;
-
   return (
     <html lang="en">
       <body>
@@ -44,14 +38,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
             <span className="brandMark">SP</span>
             <span>SHIFTPOINT <b>SOCIETY</b></span>
           </Link>
-          <nav className="desktopNav" aria-label="Primary navigation">
-            {primaryNavigation.map(({ label, href }) => (
-              <Link key={href} href={href}>
-                {label}
-                {href === "/activity" && activityBadge}
-              </Link>
-            ))}
-          </nav>
+          <DesktopNav unreadActivity={unreadActivity} />
           <Link className="garageButton" href="/garage">MY GARAGE</Link>
         </header>
         <main id="main-content" tabIndex={-1}>{children}</main>
