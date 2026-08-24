@@ -2,14 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-const mobileNav = [
-  ["Feed", "/feed", "WIRE"],
-  ["Activity", "/activity", "PULSE"],
-  ["Garage", "/garage", "SHOP"],
-  ["Meets", "/meets", "MEET"],
-  ["Deals", "/deals", "PARTS"],
-] as const;
+import { primaryNavigation } from "../lib/navigation";
 
 function isActivePath(pathname: string, href: string) {
   if (href === "/garage") {
@@ -24,7 +17,7 @@ export function MobileNav({ unreadActivity }: { unreadActivity: number }) {
 
   return (
     <nav className="mobileNav" aria-label="Mobile navigation">
-      {mobileNav.map(([label, href, kicker]) => {
+      {primaryNavigation.map(({ label, href, mobileKicker }) => {
         const active = isActivePath(pathname, href);
 
         return (
@@ -34,7 +27,7 @@ export function MobileNav({ unreadActivity }: { unreadActivity: number }) {
             className={active ? "mobileNavActive" : undefined}
             aria-current={active ? "page" : undefined}
           >
-            <span className="mobileNavKicker">{kicker}</span>
+            <span className="mobileNavKicker">{mobileKicker}</span>
             <span className="mobileNavLabel">
               {label}
               {href === "/activity" && unreadActivity > 0 ? (
