@@ -2,6 +2,7 @@ export const POST_MEDIA_LIMITS = {
   maxFilesPerPost: 4,
   maxImageBytes: 10 * 1024 * 1024,
   maxVideoBytes: 100 * 1024 * 1024,
+  maxFileNameChars: 255,
 } as const;
 
 export const POST_MEDIA_MIME_TYPES = {
@@ -22,10 +23,19 @@ export type ValidatedPostMedia = PostMediaCandidate & {
 };
 
 export function validatePostMediaCandidate(candidate: PostMediaCandidate): ValidatedPostMedia {
+  const name = candidate.name.trim();
   const mimeType = candidate.mimeType.trim().toLowerCase();
 
-  if (!candidate.name.trim()) {
+  if (!name) {
     throw new Error("Media file must have a name.");
+  }
+
+  if (name.length > POST_MEDIA_LIMITS.maxFileNameChars) {
+    throw new Error("Media file name is too long.");
+  }
+
+  if (/\p{Cc}/u.test(name)) {
+    throw new Error("Media file name contains invalid control characters.");
   }
 
   if (!Number.isSafeInteger(candidate.sizeBytes) || candidate.sizeBytes <= 0) {
@@ -37,7 +47,7 @@ export function validatePostMediaCandidate(candidate: PostMediaCandidate): Valid
       throw new Error("Image exceeds the 10 MB upload limit.");
     }
 
-    return { ...candidate, mimeType, kind: "IMAGE" };
+    return { ...candidate, name, mimeType, kind: "IMAGE" };
   }
 
   if (POST_MEDIA_MIME_TYPES.video.has(mimeType)) {
@@ -45,7 +55,7 @@ export function validatePostMediaCandidate(candidate: PostMediaCandidate): Valid
       throw new Error("Video exceeds the 100 MB upload limit.");
     }
 
-    return { ...candidate, mimeType, kind: "VIDEO" };
+    return { ...candidate, name, mimeType, kind: "VIDEO" };
   }
 
   throw new Error("Unsupported media type.");
