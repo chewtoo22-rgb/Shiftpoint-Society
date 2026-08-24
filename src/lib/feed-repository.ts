@@ -2,6 +2,18 @@ import type { Prisma } from "@prisma/client";
 
 import { db } from "./db";
 
+export const COMMUNITY_FEED_DEFAULT_LIMIT = 30;
+export const COMMUNITY_FEED_MAX_LIMIT = 50;
+
+export function normalizeCommunityFeedLimit(limit = COMMUNITY_FEED_DEFAULT_LIMIT) {
+  if (!Number.isFinite(limit)) return COMMUNITY_FEED_DEFAULT_LIMIT;
+
+  const normalized = Math.trunc(limit);
+  if (normalized < 1) return 1;
+
+  return Math.min(normalized, COMMUNITY_FEED_MAX_LIMIT);
+}
+
 export function buildCommunityFeedPostWhere(postId: string): Prisma.PostWhereUniqueInput {
   return { id: postId };
 }
@@ -103,9 +115,9 @@ const feedPostDetailInclude = {
   },
 } satisfies Prisma.PostInclude;
 
-export async function getCommunityFeed(limit = 30) {
+export async function getCommunityFeed(limit = COMMUNITY_FEED_DEFAULT_LIMIT) {
   return db.post.findMany({
-    take: limit,
+    take: normalizeCommunityFeedLimit(limit),
     orderBy: { createdAt: "desc" },
     include: feedPostInclude,
   });
