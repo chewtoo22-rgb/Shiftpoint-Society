@@ -18,7 +18,7 @@ export async function addBuildUpdate(formData: FormData) {
     body: formData.get("body"),
   });
 
-  await requireOwnedCar(input.carId);
+  const { member } = await requireOwnedCar(input.carId);
 
   await db.buildEntry.create({
     data: {
@@ -29,4 +29,6 @@ export async function addBuildUpdate(formData: FormData) {
   });
 
   revalidatePath("/garage");
+  revalidatePath(`/u/${member.handle}`);
+  revalidatePath(`/u/${member.handle}/cars/${input.carId}`);
 }
