@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import { getCurrentMember } from "@/lib/current-member";
-import { validatePostMediaBatch, type PostMediaCandidate } from "@/lib/post-media-policy";
+import { validatePostMediaBatch, type PostMediaCandidate } from "./post-media-policy";
 import {
   buildPostMediaObjectKey,
   type PostMediaStorageAdapter,
   type PostMediaUploadTarget,
-} from "@/lib/post-media-storage";
+} from "./post-media-storage";
 
 export type AuthorizedPostMediaUpload = PostMediaUploadTarget & {
   ownerId: string;
