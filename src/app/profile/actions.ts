@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getCurrentMember } from "@/lib/current-member";
 import { db } from "@/lib/db";
-import { validateSocietyHandle } from "@/lib/society-handle";
+import { validateSocietyHandle } from "../../lib/society-handle";
 
 const profileSchema = z.object({
   handle: z.string().trim().min(3).max(32).regex(/^[a-zA-Z0-9_-]+$/),
