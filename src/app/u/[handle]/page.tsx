@@ -11,9 +11,13 @@ type PublicProfilePageProps = {
 export default async function PublicProfilePage({ params }: PublicProfilePageProps) {
   const { handle } = await params;
   const member = await getPublicMemberProfile(handle);
-  const carCount = member?.cars.length ?? 0;
 
   if (!member) notFound();
+
+  const carCount = member._count.cars;
+  const renderedCarCount = member.cars.length;
+  const verifiedShownCount = member.cars.filter((car) => car.isVerified).length;
+  const isGarageTruncated = carCount > renderedCarCount;
 
   return (
     <div className="shell">
@@ -29,7 +33,9 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
           <div className="eyebrow">SOCIETY PROFILE</div>
           <div className="gauge">{String(carCount).padStart(2, "0")} <small>{carCount === 1 ? "CAR" : "CARS"}</small></div>
           <div className="meter"><span style={{ width: `${Math.min(100, carCount * 20)}%` }} /></div>
-          <div className="gauge">{member.cars.filter((car) => car.isVerified).length} <small>VERIFIED</small></div>
+          <div className="gauge">
+            {verifiedShownCount} <small>{isGarageTruncated ? "VERIFIED SHOWN" : "VERIFIED"}</small>
+          </div>
         </aside>
       </section>
 
@@ -42,24 +48,31 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
           <p>Check back when the first machine, parts ledger, and build updates are logged.</p>
         </section>
       ) : (
-        <section className="grid" aria-labelledby="garage-title">
-          {member.cars.map((car) => (
-            <Link
-              aria-label={`View ${car.year} ${car.make} ${car.model} build`}
-              className="card"
-              href={`/u/${member.handle}/cars/${car.id}`}
-              key={car.id}
-            >
-              <span className="number">// {car.isVerified ? "VERIFIED BUILD" : "ACTIVE BUILD"}</span>
-              <h2>{car.year} {car.make} {car.model}</h2>
-              <p>{car.nickname ? `“${car.nickname}” · ` : ""}{car.trim ?? ""}</p>
-              <p>{car.engine ?? "ENGINE NOT LOGGED"} · {car.drivetrain ?? "DRIVETRAIN NOT LOGGED"}</p>
-              <p><strong>{car.powerHp ? `${car.powerHp} HP` : "POWER TBD"}</strong></p>
-              <p>{car._count.buildEntries} build updates · {car._count.carParts} parts logged</p>
-              <span className="garageButton">VIEW BUILD →</span>
-            </Link>
-          ))}
-        </section>
+        <>
+          {isGarageTruncated && (
+            <p className="lead" aria-live="polite">
+              Showing the {renderedCarCount} most recently updated builds from this {carCount}-car garage.
+            </p>
+          )}
+          <section className="grid" aria-labelledby="garage-title">
+            {member.cars.map((car) => (
+              <Link
+                aria-label={`View ${car.year} ${car.make} ${car.model} build`}
+                className="card"
+                href={`/u/${member.handle}/cars/${car.id}`}
+                key={car.id}
+              >
+                <span className="number">// {car.isVerified ? "VERIFIED BUILD" : "ACTIVE BUILD"}</span>
+                <h2>{car.year} {car.make} {car.model}</h2>
+                <p>{car.nickname ? `“${car.nickname}” · ` : ""}{car.trim ?? ""}</p>
+                <p>{car.engine ?? "ENGINE NOT LOGGED"} · {car.drivetrain ?? "DRIVETRAIN NOT LOGGED"}</p>
+                <p><strong>{car.powerHp ? `${car.powerHp} HP` : "POWER TBD"}</strong></p>
+                <p>{car._count.buildEntries} build updates · {car._count.carParts} parts logged</p>
+                <span className="garageButton">VIEW BUILD →</span>
+              </Link>
+            ))}
+          </section>
+        </>
       )}
     </div>
   );
