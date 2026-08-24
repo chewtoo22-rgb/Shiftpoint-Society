@@ -1,0 +1,63 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  getCurrentMember: vi.fn(),
+  carCreate: vi.fn(),
+  revalidatePath: vi.fn(),
+  redirect: vi.fn(() => {
+    throw new Error("NEXT_REDIRECT");
+  }),
+}));
+
+vi.mock("@/lib/current-member", () => ({
+  getCurrentMember: mocks.getCurrentMember,
+}));
+
+vi.mock("@/lib/db", () => ({
+  db: {
+    car: {
+      create: mocks.carCreate,
+    },
+  },
+}));
+
+vi.mock("next/cache", () => ({
+  revalidatePath: mocks.revalidatePath,
+}));
+
+vi.mock("next/navigation", () => ({
+  redirect: mocks.redirect,
+}));
+
+import { createGarageCar } from "./actions";
+
+describe("garage car creation boundary", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.getCurrentMember.mockResolvedValue({ id: "member-1", handle: "boosted_svt" });
+    mocks.carCreate.mockResolvedValue({ id: "car-1" });
+  });
+
+  it("binds the new car to the authenticated member and refreshes the public garage", async () => {
+    const formData = new FormData();
+    formData.set("year", "2000");
+    formData.set("make", "Ford");
+    formData.set("model", "Contour SVT");
+    formData.set("ownerId", "attacker-controlled-member");
+
+    await expect(createGarageCar(formData)).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(mocks.carCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        ownerId: "member-1",
+        year: 2000,
+        make: "Ford",
+        model: "Contour SVT",
+      }),
+    });
+    expect(mocks.carCreate.mock.calls[0][0].data).not.toHaveProperty("ownerId", "attacker-controlled-member");
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/garage");
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/u/boosted_svt");
+    expect(mocks.redirect).toHaveBeenCalledWith("/garage");
+  });
+});
