@@ -1,14 +1,22 @@
 import { db } from "./db";
 import { normalizeSocietyHandle } from "./society-handle";
 
+export const PUBLIC_MEMBER_GARAGE_MAX_CARS = 50;
+
 export const publicMemberProfileSelect = {
   handle: true,
   displayName: true,
   bio: true,
   avatarUrl: true,
   createdAt: true,
+  _count: {
+    select: {
+      cars: true,
+    },
+  },
   cars: {
     orderBy: { updatedAt: "desc" },
+    take: PUBLIC_MEMBER_GARAGE_MAX_CARS,
     select: {
       id: true,
       year: true,
