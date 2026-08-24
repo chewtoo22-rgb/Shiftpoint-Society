@@ -77,6 +77,25 @@ describe("validatePostMediaCandidate", () => {
       sizeBytes: 1_000,
     })).toThrow("invalid control characters");
   });
+
+  it.each(["../garage.jpg", "build/garage.jpg", "build\\garage.jpg"])(
+    "rejects file names containing path separators: %s",
+    (name) => {
+      expect(() => validatePostMediaCandidate({
+        name,
+        mimeType: "image/jpeg",
+        sizeBytes: 1_000,
+      })).toThrow("path separators");
+    },
+  );
+
+  it("rejects bidirectional override characters that can spoof extensions", () => {
+    expect(() => validatePostMediaCandidate({
+      name: "garage\u202Egpj.exe",
+      mimeType: "image/jpeg",
+      sizeBytes: 1_000,
+    })).toThrow("unsafe bidirectional characters");
+  });
 });
 
 describe("validatePostMediaBatch", () => {
