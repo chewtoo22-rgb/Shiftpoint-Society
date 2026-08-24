@@ -2,15 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { primaryNavigation } from "../lib/navigation";
-
-function isActivePath(pathname: string, href: string) {
-  if (href === "/garage") {
-    return pathname === href || pathname.startsWith("/garage/");
-  }
-
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
+import { isPrimaryNavigationActive, primaryNavigation } from "../lib/navigation";
 
 export function MobileNav({ unreadActivity }: { unreadActivity: number }) {
   const pathname = usePathname();
@@ -18,7 +10,7 @@ export function MobileNav({ unreadActivity }: { unreadActivity: number }) {
   return (
     <nav className="mobileNav" aria-label="Mobile navigation">
       {primaryNavigation.map(({ label, href, mobileKicker }) => {
-        const active = isActivePath(pathname, href);
+        const active = isPrimaryNavigationActive(pathname, href);
 
         return (
           <Link
