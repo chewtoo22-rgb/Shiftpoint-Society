@@ -7,13 +7,12 @@ import { DesktopNav } from "./desktop-nav";
 import { MobileNav } from "./mobile-nav";
 import { getOptionalCurrentMember } from "@/lib/current-member";
 import { getUnreadActivityCount } from "@/lib/activity-repository";
+import { getActivitySeenCookieName, parseActivitySeenAt } from "@/lib/activity-seen";
 
 export const metadata: Metadata = {
   title: "Shiftpoint Society",
   description: "Cars & Coffee that never ends.",
 };
-
-const ACTIVITY_SEEN_COOKIE = "shiftpoint-activity-seen-at";
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const [member, cookieStore] = await Promise.all([
@@ -23,9 +22,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
 
   let unreadActivity = 0;
   if (member) {
-    const rawSeenAt = cookieStore.get(ACTIVITY_SEEN_COOKIE)?.value;
-    const parsedSeenAt = rawSeenAt ? new Date(rawSeenAt) : null;
-    const seenAt = parsedSeenAt && !Number.isNaN(parsedSeenAt.getTime()) ? parsedSeenAt : null;
+    const seenAt = parseActivitySeenAt(
+      cookieStore.get(getActivitySeenCookieName(member.id))?.value,
+    );
     unreadActivity = await getUnreadActivityCount(member.id, seenAt);
   }
 
