@@ -30,6 +30,14 @@ describe("validatePostMediaCandidate", () => {
     }).mimeType).toBe("image/jpeg");
   });
 
+  it("trims accepted file names", () => {
+    expect(validatePostMediaCandidate({
+      name: "  garage.jpg  ",
+      mimeType: "image/jpeg",
+      sizeBytes: 1_000,
+    }).name).toBe("garage.jpg");
+  });
+
   it("rejects unsupported content types", () => {
     expect(() => validatePostMediaCandidate({
       name: "payload.svg",
@@ -52,6 +60,22 @@ describe("validatePostMediaCandidate", () => {
       mimeType: "image/jpeg",
       sizeBytes: 0,
     })).toThrow("size is invalid");
+  });
+
+  it("rejects overlong file names before persistence", () => {
+    expect(() => validatePostMediaCandidate({
+      name: `${"a".repeat(POST_MEDIA_LIMITS.maxFileNameChars)}.jpg`,
+      mimeType: "image/jpeg",
+      sizeBytes: 1_000,
+    })).toThrow("file name is too long");
+  });
+
+  it("rejects file names containing control characters", () => {
+    expect(() => validatePostMediaCandidate({
+      name: "garage\u0000.jpg",
+      mimeType: "image/jpeg",
+      sizeBytes: 1_000,
+    })).toThrow("invalid control characters");
   });
 });
 
