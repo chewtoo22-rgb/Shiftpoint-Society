@@ -41,6 +41,16 @@ describe("garage repository authentication boundary", () => {
     expect(mocks.carFindMany).not.toHaveBeenCalled();
   });
 
+  it("pins an explicitly selected car to the authenticated owner", async () => {
+    mocks.getCurrentMember.mockResolvedValue({ id: "member-1" });
+    mocks.carFindFirst.mockResolvedValue(null);
+
+    await expect(getGarage("car-from-request")).resolves.toEqual(demoGarage);
+    expect(mocks.carFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "car-from-request", ownerId: "member-1" } }),
+    );
+  });
+
   it("still degrades authenticated garage reads when persistence is unavailable", async () => {
     mocks.getCurrentMember.mockResolvedValue({ id: "member-1" });
     mocks.carFindFirst.mockRejectedValue(new Error("database unavailable"));
