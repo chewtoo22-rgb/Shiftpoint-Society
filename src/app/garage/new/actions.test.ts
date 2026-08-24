@@ -60,4 +60,47 @@ describe("garage car creation boundary", () => {
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/u/boosted_svt");
     expect(mocks.redirect).toHaveBeenCalledWith("/garage");
   });
+
+  it("normalizes optional whitespace fields before persistence", async () => {
+    const formData = new FormData();
+    formData.set("year", "2000");
+    formData.set("make", "  Ford  ");
+    formData.set("model", "  Contour SVT  ");
+    formData.set("trim", "   ");
+    formData.set("nickname", "   ");
+    formData.set("engine", "   ");
+    formData.set("drivetrain", "   ");
+    formData.set("powerHp", "");
+
+    await expect(createGarageCar(formData)).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(mocks.carCreate).toHaveBeenCalledWith({
+      data: {
+        ownerId: "member-1",
+        year: 2000,
+        make: "Ford",
+        model: "Contour SVT",
+        trim: null,
+        nickname: null,
+        engine: null,
+        drivetrain: null,
+        powerHp: undefined,
+      },
+    });
+  });
+
+  it("rejects invalid garage facts before identity lookup or database writes", async () => {
+    const formData = new FormData();
+    formData.set("year", "1700");
+    formData.set("make", "F");
+    formData.set("model", "Contour SVT");
+    formData.set("powerHp", "9001");
+
+    await expect(createGarageCar(formData)).rejects.toThrow();
+
+    expect(mocks.getCurrentMember).not.toHaveBeenCalled();
+    expect(mocks.carCreate).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+    expect(mocks.redirect).not.toHaveBeenCalled();
+  });
 });
