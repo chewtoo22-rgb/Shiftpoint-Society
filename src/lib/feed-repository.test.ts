@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { buildCommunityFeedPostWhere } from "./feed-repository";
+import {
+  COMMUNITY_FEED_DEFAULT_LIMIT,
+  COMMUNITY_FEED_MAX_LIMIT,
+  buildCommunityFeedPostWhere,
+  normalizeCommunityFeedLimit,
+} from "./feed-repository";
 
 describe("buildCommunityFeedPostWhere", () => {
   it("constrains the detail lookup to the requested post id", () => {
@@ -13,5 +18,26 @@ describe("buildCommunityFeedPostWhere", () => {
     expect(Object.keys(where)).toEqual(["id"]);
     expect(where).not.toHaveProperty("authorId");
     expect(where).not.toHaveProperty("carId");
+  });
+});
+
+describe("normalizeCommunityFeedLimit", () => {
+  it("uses the release-safe default when no limit is supplied", () => {
+    expect(normalizeCommunityFeedLimit()).toBe(COMMUNITY_FEED_DEFAULT_LIMIT);
+  });
+
+  it("clamps oversized feed requests to the hard maximum", () => {
+    expect(normalizeCommunityFeedLimit(COMMUNITY_FEED_MAX_LIMIT + 500)).toBe(COMMUNITY_FEED_MAX_LIMIT);
+  });
+
+  it("keeps the query positive for zero or negative values", () => {
+    expect(normalizeCommunityFeedLimit(0)).toBe(1);
+    expect(normalizeCommunityFeedLimit(-20)).toBe(1);
+  });
+
+  it("normalizes fractional and non-finite values deterministically", () => {
+    expect(normalizeCommunityFeedLimit(12.9)).toBe(12);
+    expect(normalizeCommunityFeedLimit(Number.NaN)).toBe(COMMUNITY_FEED_DEFAULT_LIMIT);
+    expect(normalizeCommunityFeedLimit(Number.POSITIVE_INFINITY)).toBe(COMMUNITY_FEED_DEFAULT_LIMIT);
   });
 });
