@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { getCurrentMember } from "@/lib/current-member";
-import { demoGarage, type GarageViewModel } from "@/lib/garage";
+import { demoGarage, type GarageViewModel } from "./garage";
 
 type GarageRecord = Awaited<ReturnType<typeof loadCar>>;
 
