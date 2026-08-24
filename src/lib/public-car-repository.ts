@@ -1,9 +1,10 @@
 import { db } from "./db";
+import { normalizeSocietyHandle } from "./society-handle";
 
 export function buildPublicCarLookup(handle: string, carId: string) {
   return {
     id: carId,
-    owner: { handle },
+    owner: { handle: normalizeSocietyHandle(handle) },
   };
 }
 
