@@ -1,4 +1,16 @@
-import { db } from "@/lib/db";
+import { db } from "./db";
+
+export const MEMBER_ACTIVITY_DEFAULT_LIMIT = 40;
+export const MEMBER_ACTIVITY_MAX_LIMIT = 100;
+
+export function normalizeMemberActivityLimit(limit = MEMBER_ACTIVITY_DEFAULT_LIMIT) {
+  if (!Number.isFinite(limit)) return MEMBER_ACTIVITY_DEFAULT_LIMIT;
+
+  const normalized = Math.trunc(limit);
+  if (normalized < 1) return 1;
+
+  return Math.min(normalized, MEMBER_ACTIVITY_MAX_LIMIT);
+}
 
 export async function getUnreadActivityCount(memberId: string, seenAt: Date | null) {
   const createdAt = seenAt ? { gt: seenAt } : undefined;
@@ -22,14 +34,15 @@ export async function getUnreadActivityCount(memberId: string, seenAt: Date | nu
   return comments + reactions;
 }
 
-export async function getMemberActivity(memberId: string, limit = 40) {
+export async function getMemberActivity(memberId: string, limit = MEMBER_ACTIVITY_DEFAULT_LIMIT) {
+  const normalizedLimit = normalizeMemberActivityLimit(limit);
   const [comments, reactions] = await Promise.all([
     db.comment.findMany({
       where: {
         authorId: { not: memberId },
         post: { authorId: memberId },
       },
-      take: limit,
+      take: normalizedLimit,
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -44,7 +57,7 @@ export async function getMemberActivity(memberId: string, limit = 40) {
         userId: { not: memberId },
         post: { authorId: memberId },
       },
-      take: limit,
+      take: normalizedLimit,
       orderBy: { createdAt: "desc" },
       select: {
         postId: true,
@@ -77,5 +90,5 @@ export async function getMemberActivity(memberId: string, limit = 40) {
     })),
   ]
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-    .slice(0, limit);
+    .slice(0, normalizedLimit);
 }
