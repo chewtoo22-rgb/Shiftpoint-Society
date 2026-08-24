@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { validateSocietyHandle } from "./society-handle";
 
 type SessionMember = {
   authSubject?: string;
@@ -56,11 +57,13 @@ export async function getCurrentMember() {
     });
   }
 
+  const handle = validateSocietyHandle(sessionUser.handle);
+
   return db.user.create({
     data: {
       authSubject: sessionUser.authSubject,
-      handle: sessionUser.handle,
-      displayName: sessionUser.name ?? sessionUser.handle,
+      handle,
+      displayName: sessionUser.name ?? handle,
       avatarUrl: sessionUser.image ?? undefined,
     },
   });
