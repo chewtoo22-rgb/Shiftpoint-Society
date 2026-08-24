@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getCurrentMember } from "@/lib/current-member";
 import { db } from "@/lib/db";
+import { validateSocietyHandle } from "@/lib/society-handle";
 
 const profileSchema = z.object({
   handle: z.string().trim().min(3).max(32).regex(/^[a-zA-Z0-9_-]+$/),
@@ -25,12 +26,14 @@ export async function updateMemberProfile(formData: FormData) {
     throw new Error("Invalid Society profile details");
   }
 
+  const handle = validateSocietyHandle(parsed.data.handle);
+
   try {
     const [updated, carCount] = await db.$transaction([
       db.user.update({
         where: { id: member.id },
         data: {
-          handle: parsed.data.handle,
+          handle,
           displayName: parsed.data.displayName,
           bio: parsed.data.bio ?? null,
         },
