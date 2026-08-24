@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPublicMemberLookup,
+  PUBLIC_MEMBER_GARAGE_MAX_CARS,
   publicMemberProfileSelect,
 } from "./member-profile-repository";
 
@@ -47,7 +48,7 @@ describe("publicMemberProfileSelect", () => {
 
   it("exposes only the public garage facts needed by the member profile", () => {
     expect(Object.keys(publicMemberProfileSelect).sort()).toEqual(
-      ["avatarUrl", "bio", "cars", "createdAt", "displayName", "handle"].sort(),
+      ["_count", "avatarUrl", "bio", "cars", "createdAt", "displayName", "handle"].sort(),
     );
 
     expect(Object.keys(publicMemberProfileSelect.cars.select).sort()).toEqual(
@@ -68,5 +69,11 @@ describe("publicMemberProfileSelect", () => {
         "year",
       ].sort(),
     );
+  });
+
+  it("bounds public garage rows while retaining the total car count", () => {
+    expect(publicMemberProfileSelect.cars.take).toBe(PUBLIC_MEMBER_GARAGE_MAX_CARS);
+    expect(PUBLIC_MEMBER_GARAGE_MAX_CARS).toBe(50);
+    expect(publicMemberProfileSelect._count).toEqual({ select: { cars: true } });
   });
 });
