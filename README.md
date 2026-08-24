@@ -50,6 +50,10 @@ npm test
 npm run build
 ```
 
+## Hands-on release testing
+
+Use [THURSDAY_TEST_DAY.md](./THURSDAY_TEST_DAY.md) for the Phase 0 browser test pass. The runbook separates CI-proven behavior from deployment/browser behavior that still requires hands-on validation and includes explicit cross-member ownership, public-read, media, activity, accessibility, and response-header checks.
+
 ## Product principle
 
 **Community is the product.** Build logs, videos, deals, knowledge, meets, and later the game are the reasons people gather; identity, reputation, discussion, and shared garages are what make the ecosystem stick.
