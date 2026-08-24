@@ -24,7 +24,7 @@ export async function addInstalledPart(formData: FormData) {
     notes: formData.get("notes") || undefined,
   });
 
-  await requireOwnedCar(input.carId);
+  const { member } = await requireOwnedCar(input.carId);
 
   let part = await db.part.findFirst({
     where: {
@@ -55,4 +55,6 @@ export async function addInstalledPart(formData: FormData) {
   });
 
   revalidatePath("/garage");
+  revalidatePath(`/u/${member.handle}`);
+  revalidatePath(`/u/${member.handle}/cars/${input.carId}`);
 }
