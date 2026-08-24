@@ -4,8 +4,7 @@ import styles from "./activity.module.css";
 import { markActivitySeen } from "./actions";
 import { getCurrentMember } from "@/lib/current-member";
 import { getMemberActivity } from "@/lib/activity-repository";
-
-const ACTIVITY_SEEN_COOKIE = "shiftpoint-activity-seen-at";
+import { getActivitySeenCookieName, parseActivitySeenAt } from "@/lib/activity-seen";
 
 function timeAgo(date: Date) {
   const seconds = Math.max(1, Math.floor((Date.now() - date.getTime()) / 1000));
@@ -27,9 +26,9 @@ const reactionIcon = {
 export default async function ActivityPage() {
   const member = await getCurrentMember();
   const cookieStore = await cookies();
-  const rawSeenAt = cookieStore.get(ACTIVITY_SEEN_COOKIE)?.value;
-  const parsedSeenAt = rawSeenAt ? new Date(rawSeenAt) : null;
-  const seenAt = parsedSeenAt && !Number.isNaN(parsedSeenAt.getTime()) ? parsedSeenAt : null;
+  const seenAt = parseActivitySeenAt(
+    cookieStore.get(getActivitySeenCookieName(member.id))?.value,
+  );
   const activity = await getMemberActivity(member.id);
   const unreadCount = activity.filter((item) => !seenAt || item.createdAt > seenAt).length;
 
