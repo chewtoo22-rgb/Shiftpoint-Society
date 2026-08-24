@@ -6,22 +6,12 @@ import "./mobile-nav.css";
 import { MobileNav } from "./mobile-nav";
 import { getOptionalCurrentMember } from "@/lib/current-member";
 import { getUnreadActivityCount } from "@/lib/activity-repository";
+import { primaryNavigation } from "@/lib/navigation";
 
 export const metadata: Metadata = {
   title: "Shiftpoint Society",
   description: "Cars & Coffee that never ends.",
 };
-
-const nav = [
-  ["Feed", "/feed"],
-  ["Activity", "/activity"],
-  ["Garages", "/garages"],
-  ["Builds", "/builds"],
-  ["Videos", "/videos"],
-  ["Knowledge", "/knowledge"],
-  ["Meets", "/meets"],
-  ["Deals", "/deals"],
-];
 
 const ACTIVITY_SEEN_COOKIE = "shiftpoint-activity-seen-at";
 
@@ -54,7 +44,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
             <span>SHIFTPOINT <b>SOCIETY</b></span>
           </Link>
           <nav className="desktopNav" aria-label="Primary navigation">
-            {nav.map(([label, href]) => (
+            {primaryNavigation.map(({ label, href }) => (
               <Link key={href} href={href}>
                 {label}
                 {href === "/activity" && activityBadge}
