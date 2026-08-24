@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -37,6 +38,15 @@ vi.mock("next/navigation", () => ({
 
 import { updateMemberProfile } from "./actions";
 
+const initialState = { error: null };
+
+function validProfileFormData() {
+  const formData = new FormData();
+  formData.set("handle", "Boosted_SVT");
+  formData.set("displayName", "Matt's SVT");
+  return formData;
+}
+
 describe("member profile onboarding boundary", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -47,13 +57,12 @@ describe("member profile onboarding boundary", () => {
   });
 
   it("updates only the authenticated member, canonicalizes the handle, and refreshes both public routes", async () => {
-    const formData = new FormData();
+    const formData = validProfileFormData();
     formData.set("handle", "  Boosted_SVT  ");
-    formData.set("displayName", "Matt's SVT");
     formData.set("bio", "Built, not bought.");
     formData.set("id", "attacker-controlled-member");
 
-    await expect(updateMemberProfile(formData)).rejects.toThrow("NEXT_REDIRECT");
+    await expect(updateMemberProfile(initialState, formData)).rejects.toThrow("NEXT_REDIRECT");
 
     expect(mocks.userUpdate).toHaveBeenCalledWith({
       where: { id: "member-1" },
@@ -74,12 +83,36 @@ describe("member profile onboarding boundary", () => {
   it("continues an established member into the garage when they already own a car", async () => {
     mocks.carCount.mockResolvedValue(1);
 
-    const formData = new FormData();
-    formData.set("handle", "Boosted_SVT");
-    formData.set("displayName", "Matt's SVT");
-
-    await expect(updateMemberProfile(formData)).rejects.toThrow("NEXT_REDIRECT");
+    await expect(updateMemberProfile(initialState, validProfileFormData())).rejects.toThrow("NEXT_REDIRECT");
 
     expect(mocks.redirect).toHaveBeenCalledWith("/garage");
+  });
+
+  it("rejects malformed profile input before identity or database work", async () => {
+    const formData = validProfileFormData();
+    formData.set("handle", "no spaces allowed");
+
+    await expect(updateMemberProfile(initialState, formData)).resolves.toEqual({
+      error: expect.stringContaining("Handles must be 3–32"),
+    });
+
+    expect(mocks.getCurrentMember).not.toHaveBeenCalled();
+    expect(mocks.userUpdate).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("returns a recoverable inline error when the canonical handle is already taken", async () => {
+    mocks.transaction.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+        code: "P2002",
+        clientVersion: "6.14.0",
+      }),
+    );
+
+    await expect(updateMemberProfile(initialState, validProfileFormData())).resolves.toEqual({
+      error: "That Society handle is already taken",
+    });
+
+    expect(mocks.redirect).not.toHaveBeenCalled();
   });
 });

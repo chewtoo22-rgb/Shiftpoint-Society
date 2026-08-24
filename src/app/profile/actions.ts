@@ -14,8 +14,17 @@ const profileSchema = z.object({
   bio: z.string().trim().max(280).optional(),
 });
 
-export async function updateMemberProfile(formData: FormData) {
-  const member = await getCurrentMember();
+export type ProfileActionState = {
+  error: string | null;
+};
+
+const INVALID_PROFILE_MESSAGE =
+  "Check your profile details. Handles must be 3–32 letters, numbers, underscores, or dashes, and a display name is required.";
+
+export async function updateMemberProfile(
+  _previousState: ProfileActionState,
+  formData: FormData,
+): Promise<ProfileActionState> {
   const parsed = profileSchema.safeParse({
     handle: formData.get("handle"),
     displayName: formData.get("displayName"),
@@ -23,10 +32,11 @@ export async function updateMemberProfile(formData: FormData) {
   });
 
   if (!parsed.success) {
-    throw new Error("Invalid Society profile details");
+    return { error: INVALID_PROFILE_MESSAGE };
   }
 
   const handle = validateSocietyHandle(parsed.data.handle);
+  const member = await getCurrentMember();
 
   try {
     const [updated, carCount] = await db.$transaction([
@@ -47,7 +57,7 @@ export async function updateMemberProfile(formData: FormData) {
     redirect(carCount === 0 ? "/garage/new" : "/garage");
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      throw new Error("That Society handle is already taken");
+      return { error: "That Society handle is already taken" };
     }
     throw error;
   }
