@@ -1,7 +1,8 @@
 import { db } from "./db";
+import { normalizeSocietyHandle } from "./society-handle";
 
 export function buildPublicMemberLookup(handle: string) {
-  return { handle };
+  return { handle: normalizeSocietyHandle(handle) };
 }
 
 export async function getPublicMemberProfile(handle: string) {
