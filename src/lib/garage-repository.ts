@@ -63,19 +63,25 @@ function toGarageViewModel(car: NonNullable<GarageRecord>): GarageViewModel {
 }
 
 export async function getGarage(carId?: string): Promise<GarageViewModel> {
+  // Resolve identity before entering the database-fallback boundary. Redirects and
+  // other authentication failures must never be swallowed into demo garage data.
+  const member = await getCurrentMember();
+
   try {
-    const member = await getCurrentMember();
     const car = await loadCar(member.id, carId);
     return car ? toGarageViewModel(car) : demoGarage;
   } catch {
-    // Phase 0 fallback keeps the garage usable before a database is attached.
+    // Phase 0 fallback keeps an authenticated garage usable before a database is attached.
     return demoGarage;
   }
 }
 
 export async function getGarageSwitcher() {
+  // Keep authentication fail-closed; only persistence failures may degrade to an
+  // empty switcher for an already-authenticated member.
+  const member = await getCurrentMember();
+
   try {
-    const member = await getCurrentMember();
     return await db.car.findMany({
       where: { ownerId: member.id },
       orderBy: { updatedAt: "desc" },
