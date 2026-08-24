@@ -4,10 +4,11 @@ import { updateMemberProfile } from "./actions";
 
 export default async function ProfilePage() {
   const member = await getCurrentMember();
+  const publicProfileHref = `/u/${encodeURIComponent(member.handle)}`;
 
   return (
     <div className="shell onboardingShell">
-      <div className="eyebrow">MEMBER ONBOARDING // IDENTITY</div>
+      <div className="eyebrow">MEMBER PROFILE // IDENTITY</div>
       <h1 className="garageTitle">CLAIM YOUR<br/><em>CALLSIGN.</em></h1>
       <p className="lead">
         Your Society handle becomes the public URL for your garage. Keep it recognizable; the builds will do the flexing.
@@ -27,8 +28,9 @@ export default async function ProfilePage() {
           <textarea name="bio" maxLength={280} rows={5} defaultValue={member.bio ?? ""} placeholder="What do you build, race, wrench on, or obsess over?" />
         </label>
         <div className="onboardingActions">
-          <Link href="/garage">SKIP FOR NOW</Link>
-          <button type="submit">SAVE & BUILD GARAGE →</button>
+          <Link href={publicProfileHref}>VIEW PUBLIC GARAGE ↗</Link>
+          <Link href="/garage">BACK TO GARAGE</Link>
+          <button type="submit">SAVE PROFILE →</button>
         </div>
       </form>
     </div>
