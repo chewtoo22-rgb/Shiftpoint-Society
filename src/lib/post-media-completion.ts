@@ -94,18 +94,38 @@ function isSerializableWriteConflict(error: unknown) {
   );
 }
 
+function firstFreeMediaSlot(sortOrders: number[]) {
+  const occupied = new Set(
+    sortOrders.filter(
+      (sortOrder) =>
+        Number.isInteger(sortOrder) &&
+        sortOrder >= 0 &&
+        sortOrder < MAX_MEDIA_PER_POST,
+    ),
+  );
+
+  for (let slot = 0; slot < MAX_MEDIA_PER_POST; slot += 1) {
+    if (!occupied.has(slot)) {
+      return slot;
+    }
+  }
+
+  return null;
+}
+
 /**
  * Persists a completed upload only after the full authorization boundary above
  * succeeds. Repeated completion calls for the same storage object are
  * idempotent, while attempts to reuse an object key on a different post fail.
  *
  * Slot assignment and the four-attachment cap are evaluated inside a
- * SERIALIZABLE transaction. Without that boundary, concurrent completions can
- * both observe the same media count and allocate the same logical slot (or
- * exceed the cap). PostgreSQL/Prisma may surface a P2034 serialization conflict
- * under contention, so retry the whole bounded transaction a small number of
- * times. The matching upload intent is marked attached in the same transaction
- * as the media record so cleanup cannot race a successful attachment.
+ * SERIALIZABLE transaction. Slot selection uses the first free logical slot
+ * rather than the attachment count so a removed middle attachment cannot make
+ * a later upload collide with an existing sortOrder. PostgreSQL/Prisma may
+ * surface a P2034 serialization conflict under contention, so retry the whole
+ * bounded transaction a small number of times. The matching upload intent is
+ * marked attached in the same transaction as the media record so cleanup
+ * cannot race a successful attachment.
  */
 export async function persistPostMediaCompletion(input: {
   postId: string;
@@ -138,11 +158,15 @@ export async function persistPostMediaCompletion(input: {
             return existing;
           }
 
-          const mediaCount = await tx.postMedia.count({
+          const mediaSlots = await tx.postMedia.findMany({
             where: { postId: authorized.postId },
+            select: { sortOrder: true },
           });
+          const sortOrder = firstFreeMediaSlot(
+            mediaSlots.map((item) => item.sortOrder),
+          );
 
-          if (mediaCount >= MAX_MEDIA_PER_POST) {
+          if (sortOrder === null) {
             throw new Error(
               `Posts support up to ${MAX_MEDIA_PER_POST} media attachments.`,
             );
@@ -157,7 +181,7 @@ export async function persistPostMediaCompletion(input: {
               mimeType: authorized.mimeType,
               sizeBytes: authorized.sizeBytes,
               originalName: authorized.originalName,
-              sortOrder: mediaCount,
+              sortOrder,
             },
           });
 
