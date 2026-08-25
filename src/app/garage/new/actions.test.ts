@@ -29,7 +29,9 @@ vi.mock("next/navigation", () => ({
   redirect: mocks.redirect,
 }));
 
-import { createGarageCar } from "./actions";
+import { createGarageCar, type GarageCarActionState } from "./actions";
+
+const initialState: GarageCarActionState = { error: null };
 
 describe("garage car creation boundary", () => {
   beforeEach(() => {
@@ -45,7 +47,7 @@ describe("garage car creation boundary", () => {
     formData.set("model", "Contour SVT");
     formData.set("ownerId", "attacker-controlled-member");
 
-    await expect(createGarageCar(formData)).rejects.toThrow("NEXT_REDIRECT");
+    await expect(createGarageCar(initialState, formData)).rejects.toThrow("NEXT_REDIRECT");
 
     expect(mocks.carCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -72,7 +74,7 @@ describe("garage car creation boundary", () => {
     formData.set("drivetrain", "   ");
     formData.set("powerHp", "");
 
-    await expect(createGarageCar(formData)).rejects.toThrow("NEXT_REDIRECT");
+    await expect(createGarageCar(initialState, formData)).rejects.toThrow("NEXT_REDIRECT");
 
     expect(mocks.carCreate).toHaveBeenCalledWith({
       data: {
@@ -89,14 +91,16 @@ describe("garage car creation boundary", () => {
     });
   });
 
-  it("rejects invalid garage facts before identity lookup or database writes", async () => {
+  it("returns a recoverable validation error before identity lookup or database writes", async () => {
     const formData = new FormData();
     formData.set("year", "1700");
     formData.set("make", "F");
     formData.set("model", "Contour SVT");
     formData.set("powerHp", "9001");
 
-    await expect(createGarageCar(formData)).rejects.toThrow();
+    await expect(createGarageCar(initialState, formData)).resolves.toEqual({
+      error: expect.stringContaining("Check the machine details"),
+    });
 
     expect(mocks.getCurrentMember).not.toHaveBeenCalled();
     expect(mocks.carCreate).not.toHaveBeenCalled();
