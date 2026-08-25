@@ -71,9 +71,11 @@ export async function addInstalledPart(
 
   let part = await db.part.findFirst({
     where: {
-      brand: input.brand,
-      name: input.name,
-      partNumber: input.partNumber || null,
+      brand: { equals: input.brand, mode: "insensitive" },
+      name: { equals: input.name, mode: "insensitive" },
+      partNumber: input.partNumber
+        ? { equals: input.partNumber, mode: "insensitive" }
+        : null,
     },
   });
 
