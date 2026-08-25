@@ -16,23 +16,49 @@ export type BuildUpdateFormValues = {
   body: string;
 };
 
+export type BuildUpdateFieldErrors = Partial<Record<keyof BuildUpdateFormValues, string[]>>;
+
 export type BuildUpdateActionState = {
   error: string | null;
   success?: boolean;
   values?: BuildUpdateFormValues;
+  fieldErrors?: BuildUpdateFieldErrors;
 };
 
 const INVALID_BUILD_UPDATE_MESSAGE =
-  "Check the build update. Title and details must each be at least 3 characters and stay within their limits.";
+  "Check the build update. Fix the highlighted fields and try again.";
+
+const valueLimits: Record<keyof BuildUpdateFormValues, number> = {
+  title: 120,
+  body: 4000,
+};
 
 function submittedValues(formData: FormData): BuildUpdateFormValues {
-  const title = formData.get("title");
-  const body = formData.get("body");
+  const read = (field: keyof BuildUpdateFormValues) => {
+    const value = formData.get(field);
+    return typeof value === "string" ? value.slice(0, valueLimits[field]) : "";
+  };
 
   return {
-    title: typeof title === "string" ? title.slice(0, 120) : "",
-    body: typeof body === "string" ? body.slice(0, 4000) : "",
+    title: read("title"),
+    body: read("body"),
   };
+}
+
+function validationErrors(error: z.ZodError): BuildUpdateFieldErrors {
+  const errors: BuildUpdateFieldErrors = {};
+
+  for (const issue of error.issues) {
+    const field = issue.path[0];
+    if (typeof field !== "string" || !(field in valueLimits)) continue;
+
+    const key = field as keyof BuildUpdateFormValues;
+    const messages = errors[key] ?? [];
+    messages.push(issue.message);
+    errors[key] = messages;
+  }
+
+  return errors;
 }
 
 export async function addBuildUpdate(
@@ -49,6 +75,7 @@ export async function addBuildUpdate(
     return {
       error: INVALID_BUILD_UPDATE_MESSAGE,
       values: submittedValues(formData),
+      fieldErrors: validationErrors(parsed.error),
     };
   }
 
