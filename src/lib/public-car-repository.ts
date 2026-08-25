@@ -1,3 +1,5 @@
+import type { Prisma } from "@prisma/client";
+
 import { db } from "./db";
 import { normalizeSocietyHandle } from "./society-handle";
 
@@ -77,7 +79,7 @@ export const publicCarBuildSelect = {
       posts: true,
     },
   },
-} as const;
+} satisfies Prisma.CarSelect;
 
 export function buildPublicCarLookup(handle: string, carId: string) {
   return {
