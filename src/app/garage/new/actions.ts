@@ -14,11 +14,30 @@ const carSchema = z.object({
   nickname: z.string().trim().max(80).optional(),
   engine: z.string().trim().max(120).optional(),
   drivetrain: z.string().trim().max(80).optional(),
-  powerHp: z.preprocess((value) => value === "" ? undefined : value, z.coerce.number().int().positive().max(5000).optional()),
+  powerHp: z.preprocess(
+    (value) => value === "" ? undefined : value,
+    z.coerce.number().int().positive().max(5000).optional(),
+  ),
 });
 
-export async function createGarageCar(formData: FormData) {
-  const input = carSchema.parse(Object.fromEntries(formData));
+export type GarageCarActionState = {
+  error: string | null;
+};
+
+const INVALID_CAR_MESSAGE =
+  "Check the machine details. Year, make, model, and power must stay within the allowed ranges.";
+
+export async function createGarageCar(
+  _previousState: GarageCarActionState,
+  formData: FormData,
+): Promise<GarageCarActionState> {
+  const parsed = carSchema.safeParse(Object.fromEntries(formData));
+
+  if (!parsed.success) {
+    return { error: INVALID_CAR_MESSAGE };
+  }
+
+  const input = parsed.data;
   const owner = await getCurrentMember();
 
   await db.car.create({
