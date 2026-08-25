@@ -30,6 +30,8 @@ vi.mock("next/cache", () => ({
 
 import { addInstalledPart } from "./actions";
 
+const initialState = { error: null };
+
 describe("installed parts ledger boundary", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -50,7 +52,7 @@ describe("installed parts ledger boundary", () => {
     formData.set("name", "Cold Air Intake");
     formData.set("category", "Intake");
 
-    await expect(addInstalledPart(formData)).rejects.toThrow("not found");
+    await expect(addInstalledPart(initialState, formData)).rejects.toThrow("not found");
 
     expect(mocks.requireOwnedCar).toHaveBeenCalledWith("foreign-car");
     expect(mocks.partFindFirst).not.toHaveBeenCalled();
@@ -68,8 +70,9 @@ describe("installed parts ledger boundary", () => {
     formData.set("partNumber", "  M-9603-SVT  ");
     formData.set("notes", "  Installed for test day  ");
 
-    await addInstalledPart(formData);
+    const state = await addInstalledPart(initialState, formData);
 
+    expect(state).toEqual({ error: null, success: true });
     expect(mocks.requireOwnedCar).toHaveBeenCalledWith("car-1");
     expect(mocks.partFindFirst).toHaveBeenCalledWith({
       where: {
@@ -104,7 +107,7 @@ describe("installed parts ledger boundary", () => {
     formData.set("name", "B8 Performance Plus");
     formData.set("category", "Suspension");
 
-    await addInstalledPart(formData);
+    await addInstalledPart(initialState, formData);
 
     expect(mocks.requireOwnedCar).toHaveBeenCalledBefore(mocks.partFindFirst);
     expect(mocks.partCreate).toHaveBeenCalledWith({
@@ -122,15 +125,25 @@ describe("installed parts ledger boundary", () => {
     );
   });
 
-  it("rejects malformed ledger data before ownership lookup or persistence", async () => {
+  it("returns recoverable bounded validation state before ownership lookup or persistence", async () => {
     const formData = new FormData();
     formData.set("carId", "car-1");
-    formData.set("brand", "");
+    formData.set("brand", "B".repeat(100));
     formData.set("name", "x");
     formData.set("category", "x");
+    formData.set("notes", "n".repeat(600));
 
-    await expect(addInstalledPart(formData)).rejects.toThrow();
+    const state = await addInstalledPart(initialState, formData);
 
+    expect(state.error).toMatch(/check the part details/i);
+    expect(state.success).toBeUndefined();
+    expect(state.values).toEqual({
+      brand: "B".repeat(80),
+      name: "x",
+      category: "x",
+      partNumber: "",
+      notes: "n".repeat(500),
+    });
     expect(mocks.requireOwnedCar).not.toHaveBeenCalled();
     expect(mocks.partFindFirst).not.toHaveBeenCalled();
     expect(mocks.partCreate).not.toHaveBeenCalled();
