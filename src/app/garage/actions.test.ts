@@ -22,7 +22,9 @@ vi.mock("next/cache", () => ({
   revalidatePath: mocks.revalidatePath,
 }));
 
-import { addBuildUpdate } from "./actions";
+import { addBuildUpdate, type BuildUpdateActionState } from "./actions";
+
+const initialState: BuildUpdateActionState = { error: null };
 
 describe("build update ownership and integrity boundary", () => {
   beforeEach(() => {
@@ -42,7 +44,7 @@ describe("build update ownership and integrity boundary", () => {
     formData.set("title", "Dyno baseline");
     formData.set("body", "Established a clean baseline before the next round of changes.");
 
-    await expect(addBuildUpdate(formData)).rejects.toThrow("not found");
+    await expect(addBuildUpdate(initialState, formData)).rejects.toThrow("not found");
 
     expect(mocks.requireOwnedCar).toHaveBeenCalledWith("foreign-car");
     expect(mocks.buildEntryCreate).not.toHaveBeenCalled();
@@ -55,7 +57,10 @@ describe("build update ownership and integrity boundary", () => {
     formData.set("title", "  Dyno baseline  ");
     formData.set("body", "  Established a clean baseline before the next round of changes.  ");
 
-    await addBuildUpdate(formData);
+    await expect(addBuildUpdate(initialState, formData)).resolves.toEqual({
+      error: null,
+      success: true,
+    });
 
     expect(mocks.requireOwnedCar).toHaveBeenCalledWith("car-1");
     expect(mocks.buildEntryCreate).toHaveBeenCalledWith({
@@ -70,16 +75,37 @@ describe("build update ownership and integrity boundary", () => {
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/u/boosted_svt/cars/car-1");
   });
 
-  it("rejects malformed update data before ownership lookup or persistence", async () => {
+  it("returns a recoverable validation state before ownership lookup or persistence", async () => {
     const formData = new FormData();
     formData.set("carId", "car-1");
     formData.set("title", "x");
     formData.set("body", "x");
 
-    await expect(addBuildUpdate(formData)).rejects.toThrow();
+    await expect(addBuildUpdate(initialState, formData)).resolves.toEqual({
+      error: "Check the build update. Title and details must each be at least 3 characters and stay within their limits.",
+      values: {
+        title: "x",
+        body: "x",
+      },
+    });
 
     expect(mocks.requireOwnedCar).not.toHaveBeenCalled();
     expect(mocks.buildEntryCreate).not.toHaveBeenCalled();
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("bounds echoed validation values before returning them to the client", async () => {
+    const formData = new FormData();
+    formData.set("carId", "car-1");
+    formData.set("title", "t".repeat(121));
+    formData.set("body", "b".repeat(4001));
+
+    const result = await addBuildUpdate(initialState, formData);
+
+    expect(result.error).toBeTruthy();
+    expect(result.values?.title).toHaveLength(120);
+    expect(result.values?.body).toHaveLength(4000);
+    expect(mocks.requireOwnedCar).not.toHaveBeenCalled();
+    expect(mocks.buildEntryCreate).not.toHaveBeenCalled();
   });
 });
