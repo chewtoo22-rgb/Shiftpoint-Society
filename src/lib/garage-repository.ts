@@ -6,6 +6,7 @@ type GarageRecord = Awaited<ReturnType<typeof loadCar>>;
 
 const GARAGE_SWITCHER_LIMIT = 50;
 const GARAGE_PARTS_PREVIEW_LIMIT = 8;
+const GARAGE_BUILD_LOG_PREVIEW_LIMIT = 8;
 
 async function loadCar(ownerId: string, carId?: string) {
   const car = await db.car.findFirst({
@@ -14,7 +15,7 @@ async function loadCar(ownerId: string, carId?: string) {
     include: {
       buildEntries: {
         orderBy: [{ occurredAt: "desc" }, { id: "asc" }],
-        take: 8,
+        take: GARAGE_BUILD_LOG_PREVIEW_LIMIT,
       },
       carParts: {
         orderBy: [{ installedAt: "desc" }, { partId: "asc" }],
@@ -22,7 +23,7 @@ async function loadCar(ownerId: string, carId?: string) {
         include: { part: true },
       },
       _count: {
-        select: { carParts: true },
+        select: { carParts: true, buildEntries: true },
       },
     },
   });
@@ -61,6 +62,9 @@ function toGarageViewModel(car: NonNullable<GarageRecord>): GarageViewModel {
     wrenchScore: car.isVerified ? 100 : Math.min(95, 40 + car.buildEntries.length * 5 + car.partsInstalled * 2),
     partsLogged: car._count.carParts,
     partsInstalled: car.partsInstalled,
+    partsPreviewTruncated: car._count.carParts > car.carParts.length,
+    buildLogTotal: car._count.buildEntries,
+    buildLogPreviewTruncated: car._count.buildEntries > car.buildEntries.length,
     buildAge: buildAgeLabel(car.createdAt),
     lastUpdated: `Updated ${car.updatedAt.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
     mods: car.carParts.map(({ part }) => ({
