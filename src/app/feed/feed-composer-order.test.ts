@@ -23,4 +23,15 @@ describe("feed composer media publication order", () => {
     expect(source).toContain("pendingPostIdRef.current = post.id");
     expect(source).toContain("Retry to finish only the remaining media on this same post");
   });
+
+  it("guards volatile retry state from accidental tab close or reload", () => {
+    const source = readFileSync(new URL("./feed-composer.tsx", import.meta.url), "utf8");
+
+    expect(source).toContain('window.addEventListener("beforeunload", handleBeforeUnload)');
+    expect(source).toContain('window.removeEventListener("beforeunload", handleBeforeUnload)');
+    expect(source).toContain("if (!hasPendingPost) return;");
+    expect(source).toContain(
+      "Post saved. Keep this tab open until the remaining media is attached; retry will continue on this same post.",
+    );
+  });
 });
