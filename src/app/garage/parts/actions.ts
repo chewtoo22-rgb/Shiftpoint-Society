@@ -22,28 +22,55 @@ export type InstalledPartFormValues = {
   notes: string;
 };
 
+export type InstalledPartFieldErrors = Partial<Record<keyof InstalledPartFormValues, string[]>>;
+
 export type InstalledPartActionState = {
   error: string | null;
   success?: boolean;
   values?: InstalledPartFormValues;
+  fieldErrors?: InstalledPartFieldErrors;
 };
 
 const INVALID_INSTALLED_PART_MESSAGE =
-  "Check the part details. Brand is required, part name and category must be at least 2 characters, and all fields must stay within their limits.";
+  "Check the part details. Fix the highlighted fields and try again.";
+
+const valueLimits: Record<keyof InstalledPartFormValues, number> = {
+  brand: 80,
+  name: 140,
+  category: 80,
+  partNumber: 80,
+  notes: 500,
+};
 
 function submittedValues(formData: FormData): InstalledPartFormValues {
-  const bounded = (name: string, maxLength: number) => {
-    const value = formData.get(name);
-    return typeof value === "string" ? value.slice(0, maxLength) : "";
+  const read = (field: keyof InstalledPartFormValues) => {
+    const value = formData.get(field);
+    return typeof value === "string" ? value.slice(0, valueLimits[field]) : "";
   };
 
   return {
-    brand: bounded("brand", 80),
-    name: bounded("name", 140),
-    category: bounded("category", 80),
-    partNumber: bounded("partNumber", 80),
-    notes: bounded("notes", 500),
+    brand: read("brand"),
+    name: read("name"),
+    category: read("category"),
+    partNumber: read("partNumber"),
+    notes: read("notes"),
   };
+}
+
+function validationErrors(error: z.ZodError): InstalledPartFieldErrors {
+  const errors: InstalledPartFieldErrors = {};
+
+  for (const issue of error.issues) {
+    const field = issue.path[0];
+    if (typeof field !== "string" || !(field in valueLimits)) continue;
+
+    const key = field as keyof InstalledPartFormValues;
+    const messages = errors[key] ?? [];
+    messages.push(issue.message);
+    errors[key] = messages;
+  }
+
+  return errors;
 }
 
 export async function addInstalledPart(
@@ -63,6 +90,7 @@ export async function addInstalledPart(
     return {
       error: INVALID_INSTALLED_PART_MESSAGE,
       values: submittedValues(formData),
+      fieldErrors: validationErrors(parsed.error),
     };
   }
 
