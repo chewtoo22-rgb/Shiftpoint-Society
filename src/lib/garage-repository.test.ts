@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   carFindFirst: vi.fn(),
   carFindMany: vi.fn(),
   carCount: vi.fn(),
+  carPartCount: vi.fn(),
 }));
 
 vi.mock("@/lib/current-member", () => ({
@@ -17,6 +18,9 @@ vi.mock("@/lib/db", () => ({
       findFirst: mocks.carFindFirst,
       findMany: mocks.carFindMany,
       count: mocks.carCount,
+    },
+    carPart: {
+      count: mocks.carPartCount,
     },
   },
 }));
@@ -55,6 +59,7 @@ describe("garage repository authentication boundary", () => {
         orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
       }),
     );
+    expect(mocks.carPartCount).not.toHaveBeenCalled();
   });
 
   it("keeps a healthy empty garage distinct from demo fallback data", async () => {
@@ -64,6 +69,73 @@ describe("garage repository authentication boundary", () => {
     await expect(getGarage()).resolves.toBeNull();
     expect(mocks.carFindFirst).toHaveBeenCalledWith(
       expect.objectContaining({ where: { ownerId: "member-1" } }),
+    );
+    expect(mocks.carPartCount).not.toHaveBeenCalled();
+  });
+
+  it("bounds the private parts preview while keeping accurate owner-scoped ledger counts", async () => {
+    mocks.getCurrentMember.mockResolvedValue({ id: "member-1" });
+    mocks.carFindFirst.mockResolvedValue({
+      id: "car-1",
+      year: 2000,
+      make: "Ford",
+      model: "Contour SVT",
+      nickname: "SVT",
+      engine: "2.5L V6",
+      drivetrain: "FWD",
+      powerHp: 200,
+      quarterMileSeconds: null,
+      quarterMileMph: null,
+      isVerified: false,
+      createdAt: new Date("2024-01-01T00:00:00Z"),
+      updatedAt: new Date("2026-08-25T00:00:00Z"),
+      buildEntries: [],
+      carParts: [
+        {
+          installedAt: new Date("2026-08-20T00:00:00Z"),
+          partId: "part-1",
+          part: {
+            category: "suspension",
+            brand: "Bilstein",
+            name: "B8",
+            partNumber: "24-000000",
+          },
+        },
+      ],
+      _count: { carParts: 73 },
+    });
+    mocks.carPartCount.mockResolvedValue(61);
+
+    const garage = await getGarage();
+
+    expect(mocks.carFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { ownerId: "member-1" },
+        include: expect.objectContaining({
+          carParts: expect.objectContaining({
+            orderBy: [{ installedAt: "desc" }, { partId: "asc" }],
+            take: 8,
+          }),
+          _count: { select: { carParts: true } },
+        }),
+      }),
+    );
+    expect(mocks.carPartCount).toHaveBeenCalledWith({
+      where: { carId: "car-1", installedAt: { not: null } },
+    });
+    expect(garage).toEqual(
+      expect.objectContaining({
+        id: "car-1",
+        partsLogged: 73,
+        partsInstalled: 61,
+        mods: [
+          {
+            type: "SUSPENSION",
+            name: "Bilstein B8",
+            delta: "24-000000",
+          },
+        ],
+      }),
     );
   });
 
