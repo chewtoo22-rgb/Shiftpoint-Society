@@ -31,13 +31,16 @@ export type GarageCarFormValues = {
   powerHp: string;
 };
 
+export type GarageCarFieldErrors = Partial<Record<keyof GarageCarFormValues, string[]>>;
+
 export type GarageCarActionState = {
   error: string | null;
   values?: GarageCarFormValues;
+  fieldErrors?: GarageCarFieldErrors;
 };
 
 const INVALID_CAR_MESSAGE =
-  "Check the machine details. Year, make, model, and power must stay within the allowed ranges.";
+  "Check the machine details. Fix the highlighted fields and try again.";
 
 const valueLimits: Record<keyof GarageCarFormValues, number> = {
   year: 4,
@@ -68,6 +71,22 @@ function submittedValues(formData: FormData): GarageCarFormValues {
   };
 }
 
+function validationErrors(error: z.ZodError): GarageCarFieldErrors {
+  const errors: GarageCarFieldErrors = {};
+
+  for (const issue of error.issues) {
+    const field = issue.path[0];
+    if (typeof field !== "string" || !(field in valueLimits)) continue;
+
+    const key = field as keyof GarageCarFormValues;
+    const messages = errors[key] ?? [];
+    messages.push(issue.message);
+    errors[key] = messages;
+  }
+
+  return errors;
+}
+
 export async function createGarageCar(
   _previousState: GarageCarActionState,
   formData: FormData,
@@ -78,6 +97,7 @@ export async function createGarageCar(
     return {
       error: INVALID_CAR_MESSAGE,
       values: submittedValues(formData),
+      fieldErrors: validationErrors(parsed.error),
     };
   }
 
