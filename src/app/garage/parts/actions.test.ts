@@ -61,7 +61,7 @@ describe("installed parts ledger boundary", () => {
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });
 
-  it("normalizes ledger input, reuses a matching catalog part, and scopes the upsert to the owned car", async () => {
+  it("normalizes ledger input, reuses a case-insensitive catalog match, and scopes the upsert to the owned car", async () => {
     const formData = new FormData();
     formData.set("carId", "car-1");
     formData.set("brand", "  Ford Performance  ");
@@ -76,9 +76,9 @@ describe("installed parts ledger boundary", () => {
     expect(mocks.requireOwnedCar).toHaveBeenCalledWith("car-1");
     expect(mocks.partFindFirst).toHaveBeenCalledWith({
       where: {
-        brand: "Ford Performance",
-        name: "Cold Air Intake",
-        partNumber: "M-9603-SVT",
+        brand: { equals: "Ford Performance", mode: "insensitive" },
+        name: { equals: "Cold Air Intake", mode: "insensitive" },
+        partNumber: { equals: "M-9603-SVT", mode: "insensitive" },
       },
     });
     expect(mocks.partCreate).not.toHaveBeenCalled();
@@ -95,6 +95,25 @@ describe("installed parts ledger boundary", () => {
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/garage");
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/u/boosted_svt");
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/u/boosted_svt/cars/car-1");
+  });
+
+  it("matches catalog parts without a part number using the same case-insensitive identity", async () => {
+    const formData = new FormData();
+    formData.set("carId", "car-1");
+    formData.set("brand", "Bilstein");
+    formData.set("name", "B8 Performance Plus");
+    formData.set("category", "Suspension");
+
+    await addInstalledPart(initialState, formData);
+
+    expect(mocks.partFindFirst).toHaveBeenCalledWith({
+      where: {
+        brand: { equals: "Bilstein", mode: "insensitive" },
+        name: { equals: "B8 Performance Plus", mode: "insensitive" },
+        partNumber: null,
+      },
+    });
+    expect(mocks.partCreate).not.toHaveBeenCalled();
   });
 
   it("creates a catalog part only after ownership succeeds when no match exists", async () => {
