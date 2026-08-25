@@ -92,6 +92,20 @@ describe("feed authenticated write boundaries", () => {
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/feed");
   });
 
+  it("rejects malformed posts before authentication, ownership lookup, or persistence", async () => {
+    const formData = new FormData();
+    formData.set("body", "x".repeat(1201));
+    formData.set("kind", "GENERAL");
+    formData.set("carId", "car-1");
+
+    await expect(createFeedPost(formData)).rejects.toThrow();
+
+    expect(mocks.getCurrentMember).not.toHaveBeenCalled();
+    expect(mocks.requireOwnedCar).not.toHaveBeenCalled();
+    expect(mocks.postCreate).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
   it("fails closed before post persistence when the requested car is not owned", async () => {
     mocks.requireOwnedCar.mockRejectedValue(new Error("not found"));
     const formData = new FormData();
@@ -176,6 +190,21 @@ describe("feed authenticated write boundaries", () => {
     expect(mocks.reactionDelete).not.toHaveBeenCalled();
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/feed");
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/feed/post-1");
+  });
+
+  it("rejects malformed reactions before authentication or database access", async () => {
+    const formData = new FormData();
+    formData.set("postId", "post-1");
+    formData.set("type", "BOOST");
+
+    await expect(toggleFeedReaction(formData)).rejects.toThrow();
+
+    expect(mocks.getCurrentMember).not.toHaveBeenCalled();
+    expect(mocks.postFindUnique).not.toHaveBeenCalled();
+    expect(mocks.reactionFindUnique).not.toHaveBeenCalled();
+    expect(mocks.reactionCreate).not.toHaveBeenCalled();
+    expect(mocks.reactionDelete).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });
 
   it("removes only the authenticated member's exact existing reaction and refreshes detail", async () => {
