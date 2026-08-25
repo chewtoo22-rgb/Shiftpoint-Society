@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   getCurrentMember: vi.fn(),
   carFindFirst: vi.fn(),
   carFindMany: vi.fn(),
+  carCount: vi.fn(),
 }));
 
 vi.mock("@/lib/current-member", () => ({
@@ -15,6 +16,7 @@ vi.mock("@/lib/db", () => ({
     car: {
       findFirst: mocks.carFindFirst,
       findMany: mocks.carFindMany,
+      count: mocks.carCount,
     },
   },
 }));
@@ -39,6 +41,7 @@ describe("garage repository authentication boundary", () => {
 
     await expect(getGarageSwitcher()).rejects.toThrow("redirect:/sign-in");
     expect(mocks.carFindMany).not.toHaveBeenCalled();
+    expect(mocks.carCount).not.toHaveBeenCalled();
   });
 
   it("pins an explicitly selected car to the authenticated owner and fails closed when absent", async () => {
@@ -47,7 +50,10 @@ describe("garage repository authentication boundary", () => {
 
     await expect(getGarage("car-from-request")).resolves.toBeNull();
     expect(mocks.carFindFirst).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: "car-from-request", ownerId: "member-1" } }),
+      expect.objectContaining({
+        where: { id: "car-from-request", ownerId: "member-1" },
+        orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+      }),
     );
   });
 
@@ -74,8 +80,13 @@ describe("garage repository authentication boundary", () => {
   it("bounds and deterministically orders the authenticated garage switcher", async () => {
     mocks.getCurrentMember.mockResolvedValue({ id: "member-2" });
     mocks.carFindMany.mockResolvedValue([]);
+    mocks.carCount.mockResolvedValue(0);
 
-    await expect(getGarageSwitcher()).resolves.toEqual([]);
+    await expect(getGarageSwitcher()).resolves.toEqual({
+      cars: [],
+      total: 0,
+      isTruncated: false,
+    });
     expect(mocks.carFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { ownerId: "member-2" },
@@ -83,13 +94,33 @@ describe("garage repository authentication boundary", () => {
         take: 50,
       }),
     );
+    expect(mocks.carCount).toHaveBeenCalledWith({ where: { ownerId: "member-2" } });
+  });
+
+  it("reports when the owner-scoped switcher is truncated", async () => {
+    mocks.getCurrentMember.mockResolvedValue({ id: "member-2" });
+    mocks.carFindMany.mockResolvedValue([
+      { id: "car-1", year: 2000, make: "Ford", model: "Contour", nickname: "SVT" },
+    ]);
+    mocks.carCount.mockResolvedValue(51);
+
+    await expect(getGarageSwitcher()).resolves.toEqual({
+      cars: [{ id: "car-1", year: 2000, make: "Ford", model: "Contour", nickname: "SVT" }],
+      total: 51,
+      isTruncated: true,
+    });
   });
 
   it("still degrades the authenticated switcher when persistence is unavailable", async () => {
     mocks.getCurrentMember.mockResolvedValue({ id: "member-2" });
     mocks.carFindMany.mockRejectedValue(new Error("database unavailable"));
+    mocks.carCount.mockResolvedValue(0);
 
-    await expect(getGarageSwitcher()).resolves.toEqual([]);
+    await expect(getGarageSwitcher()).resolves.toEqual({
+      cars: [],
+      total: 0,
+      isTruncated: false,
+    });
     expect(mocks.carFindMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { ownerId: "member-2" } }),
     );
