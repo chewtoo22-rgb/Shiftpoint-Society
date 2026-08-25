@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { addBuildUpdate } from "@/app/garage/actions";
+import { BuildUpdateForm } from "@/app/garage/BuildUpdateForm";
 import { addInstalledPart } from "@/app/garage/parts/actions";
 import { getGarage, getGarageSwitcher } from "@/lib/garage-repository";
 
@@ -76,12 +76,7 @@ export default async function GaragePage({ searchParams }: GaragePageProps) {
           <h2>ADD BUILD UPDATE</h2>
           <p>Turn wrench time into permanent build history.</p>
         </div>
-        <form action={addBuildUpdate}>
-          <input type="hidden" name="carId" value={garage.id} />
-          <input name="title" minLength={3} maxLength={120} required placeholder="What changed?" aria-label="Build update title" />
-          <textarea name="body" minLength={3} maxLength={4000} required placeholder="Parts, settings, numbers, results, lessons..." aria-label="Build update details" />
-          <button type="submit">LOG UPDATE →</button>
-        </form>
+        <BuildUpdateForm carId={garage.id} />
       </section>
 
       <section className="buildComposer partsComposer">
