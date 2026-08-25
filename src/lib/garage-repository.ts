@@ -9,13 +9,14 @@ const GARAGE_SWITCHER_LIMIT = 50;
 async function loadCar(ownerId: string, carId?: string) {
   return db.car.findFirst({
     where: carId ? { id: carId, ownerId } : { ownerId },
-    orderBy: { updatedAt: "desc" },
+    orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
     include: {
       buildEntries: {
-        orderBy: { occurredAt: "desc" },
+        orderBy: [{ occurredAt: "desc" }, { id: "asc" }],
         take: 8,
       },
       carParts: {
+        orderBy: [{ installedAt: "desc" }, { partId: "asc" }],
         include: { part: true },
       },
     },
@@ -84,26 +85,47 @@ export async function getGarage(carId?: string): Promise<GarageViewModel | null>
   }
 }
 
-export async function getGarageSwitcher() {
+export type GarageSwitcherResult = {
+  cars: Array<{
+    id: string;
+    year: number;
+    make: string;
+    model: string;
+    nickname: string | null;
+  }>;
+  total: number;
+  isTruncated: boolean;
+};
+
+export async function getGarageSwitcher(): Promise<GarageSwitcherResult> {
   // Keep authentication fail-closed; only persistence failures may degrade to an
   // empty switcher for an already-authenticated member.
   const member = await getCurrentMember();
 
   try {
-    return await db.car.findMany({
-      where: { ownerId: member.id },
-      orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
-      take: GARAGE_SWITCHER_LIMIT,
-      select: {
-        id: true,
-        year: true,
-        make: true,
-        model: true,
-        nickname: true,
-      },
-    });
+    const [cars, total] = await Promise.all([
+      db.car.findMany({
+        where: { ownerId: member.id },
+        orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+        take: GARAGE_SWITCHER_LIMIT,
+        select: {
+          id: true,
+          year: true,
+          make: true,
+          model: true,
+          nickname: true,
+        },
+      }),
+      db.car.count({ where: { ownerId: member.id } }),
+    ]);
+
+    return {
+      cars,
+      total,
+      isTruncated: total > cars.length,
+    };
   } catch {
-    return [];
+    return { cars: [], total: 0, isTruncated: false };
   }
 }
 
