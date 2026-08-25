@@ -70,12 +70,12 @@ export async function getGarage(carId?: string): Promise<GarageViewModel | null>
   try {
     const car = await loadCar(member.id, carId);
 
-    // An explicit car selection is request-controlled. If it does not resolve inside
-    // the authenticated member's ownership scope, fail closed instead of rendering
-    // demo data that could make a foreign/unknown identifier look like a real garage.
-    if (!car && carId) return null;
+    // A healthy persistence layer with no matching row means there is no garage to
+    // render. Keep that distinct from infrastructure failure so first-time members
+    // continue into real car onboarding instead of seeing demo data as their garage.
+    if (!car) return null;
 
-    return car ? toGarageViewModel(car) : demoGarage;
+    return toGarageViewModel(car);
   } catch {
     // Phase 0 fallback keeps an authenticated garage usable before a database is attached.
     return demoGarage;
