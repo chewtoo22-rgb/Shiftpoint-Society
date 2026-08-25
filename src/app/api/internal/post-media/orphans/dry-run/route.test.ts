@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const authorizePostMediaOrphanOperator = vi.fn();
-const runPostMediaOrphanDryRunReport = vi.fn();
+const {
+  authorizePostMediaOrphanOperator,
+  runPostMediaOrphanDryRunReport,
+} = vi.hoisted(() => ({
+  authorizePostMediaOrphanOperator: vi.fn(),
+  runPostMediaOrphanDryRunReport: vi.fn(),
+}));
 
 vi.mock("@/lib/post-media-orphan-operator-auth", () => ({
   authorizePostMediaOrphanOperator,
