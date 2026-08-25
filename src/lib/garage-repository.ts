@@ -5,9 +5,10 @@ import { demoGarage, type GarageViewModel } from "./garage";
 type GarageRecord = Awaited<ReturnType<typeof loadCar>>;
 
 const GARAGE_SWITCHER_LIMIT = 50;
+const GARAGE_PARTS_PREVIEW_LIMIT = 8;
 
 async function loadCar(ownerId: string, carId?: string) {
-  return db.car.findFirst({
+  const car = await db.car.findFirst({
     where: carId ? { id: carId, ownerId } : { ownerId },
     orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
     include: {
@@ -17,10 +18,22 @@ async function loadCar(ownerId: string, carId?: string) {
       },
       carParts: {
         orderBy: [{ installedAt: "desc" }, { partId: "asc" }],
+        take: GARAGE_PARTS_PREVIEW_LIMIT,
         include: { part: true },
+      },
+      _count: {
+        select: { carParts: true },
       },
     },
   });
+
+  if (!car) return null;
+
+  const partsInstalled = await db.carPart.count({
+    where: { carId: car.id, installedAt: { not: null } },
+  });
+
+  return { ...car, partsInstalled };
 }
 
 function formatQuarterMile(seconds: number | null, mph: number | null) {
@@ -34,8 +47,6 @@ function buildAgeLabel(createdAt: Date) {
 }
 
 function toGarageViewModel(car: NonNullable<GarageRecord>): GarageViewModel {
-  const installed = car.carParts.filter((entry) => entry.installedAt != null);
-
   return {
     id: car.id,
     eyebrow: `MY GARAGE // ${car.nickname?.toUpperCase() ?? car.model.toUpperCase()}`,
@@ -47,12 +58,12 @@ function toGarageViewModel(car: NonNullable<GarageRecord>): GarageViewModel {
     power: car.powerHp == null ? "—" : `${car.powerHp} HP`,
     quarterMile: formatQuarterMile(car.quarterMileSeconds, car.quarterMileMph),
     status: "ACTIVE",
-    wrenchScore: car.isVerified ? 100 : Math.min(95, 40 + car.buildEntries.length * 5 + installed.length * 2),
-    partsLogged: car.carParts.length,
-    partsInstalled: installed.length,
+    wrenchScore: car.isVerified ? 100 : Math.min(95, 40 + car.buildEntries.length * 5 + car.partsInstalled * 2),
+    partsLogged: car._count.carParts,
+    partsInstalled: car.partsInstalled,
     buildAge: buildAgeLabel(car.createdAt),
     lastUpdated: `Updated ${car.updatedAt.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
-    mods: car.carParts.slice(0, 8).map(({ part }) => ({
+    mods: car.carParts.map(({ part }) => ({
       type: part.category.toUpperCase(),
       name: `${part.brand} ${part.name}`,
       delta: part.partNumber ?? "LOGGED",
