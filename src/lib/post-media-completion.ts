@@ -25,6 +25,37 @@ export type AuthorizedPostMediaCompletion = {
   kind: "IMAGE" | "VIDEO";
 };
 
+type UploadIntentSnapshot = {
+  ownerId: string;
+  mediaUrl: string;
+  type: "IMAGE" | "VIDEO";
+  mimeType: string;
+  sizeBytes: number;
+  originalName: string | null;
+};
+
+function assertUploadIntentMatches(
+  intent: UploadIntentSnapshot | null,
+  expected: Pick<
+    AuthorizedPostMediaCompletion,
+    "ownerId" | "mediaUrl" | "kind" | "mimeType" | "sizeBytes" | "originalName"
+  >,
+) {
+  if (!intent || intent.ownerId !== expected.ownerId) {
+    throw new Error("Upload intent not found for current member.");
+  }
+
+  if (
+    intent.mediaUrl !== expected.mediaUrl ||
+    intent.type !== expected.kind ||
+    intent.mimeType !== expected.mimeType ||
+    intent.sizeBytes !== expected.sizeBytes ||
+    (intent.originalName ?? "") !== expected.originalName
+  ) {
+    throw new Error("Uploaded media does not match its authorized upload intent.");
+  }
+}
+
 /**
  * Final server-side authorization boundary before uploaded media can be
  * persisted against a post. The current member is resolved from the session,
@@ -62,19 +93,14 @@ export async function authorizePostMediaCompletion(input: {
     where: { objectKey },
   });
 
-  if (!intent || intent.ownerId !== member.id) {
-    throw new Error("Upload intent not found for current member.");
-  }
-
-  if (
-    intent.mediaUrl !== mediaUrl ||
-    intent.type !== media.kind ||
-    intent.mimeType !== media.mimeType ||
-    intent.sizeBytes !== media.sizeBytes ||
-    (intent.originalName ?? "") !== media.name
-  ) {
-    throw new Error("Uploaded media does not match its authorized upload intent.");
-  }
+  assertUploadIntentMatches(intent, {
+    ownerId: member.id,
+    mediaUrl,
+    kind: media.kind,
+    mimeType: media.mimeType,
+    sizeBytes: media.sizeBytes,
+    originalName: media.name,
+  });
 
   return {
     postId: post.id,
@@ -118,14 +144,17 @@ function firstFreeMediaSlot(sortOrders: number[]) {
  * succeeds. Repeated completion calls for the same storage object are
  * idempotent, while attempts to reuse an object key on a different post fail.
  *
- * Slot assignment and the four-attachment cap are evaluated inside a
- * SERIALIZABLE transaction. Slot selection uses the first free logical slot
- * rather than the attachment count so a removed middle attachment cannot make
- * a later upload collide with an existing sortOrder. PostgreSQL/Prisma may
- * surface a P2034 serialization conflict under contention, so retry the whole
- * bounded transaction a small number of times. The matching upload intent is
- * marked attached in the same transaction as the media record so cleanup
- * cannot race a successful attachment.
+ * Slot assignment, upload-intent revalidation, and the four-attachment cap are
+ * evaluated inside a SERIALIZABLE transaction. Re-reading the upload intent in
+ * the same transaction closes the authorization-to-persistence TOCTOU window:
+ * a stale/replaced intent cannot be marked attached after the outer admission
+ * check. Slot selection uses the first free logical slot rather than the
+ * attachment count so a removed middle attachment cannot make a later upload
+ * collide with an existing sortOrder. PostgreSQL/Prisma may surface a P2034
+ * serialization conflict under contention, so retry the whole bounded
+ * transaction a small number of times. The matching upload intent is marked
+ * attached in the same transaction as the media record so cleanup cannot race
+ * a successful attachment.
  */
 export async function persistPostMediaCompletion(input: {
   postId: string;
@@ -139,6 +168,12 @@ export async function persistPostMediaCompletion(input: {
     try {
       return await db.$transaction(
         async (tx) => {
+          const intent = await tx.postMediaUploadIntent.findUnique({
+            where: { objectKey: authorized.objectKey },
+          });
+
+          assertUploadIntentMatches(intent, authorized);
+
           const existing = await tx.postMedia.findUnique({
             where: { objectKey: authorized.objectKey },
           });
