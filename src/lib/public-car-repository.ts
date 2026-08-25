@@ -25,7 +25,7 @@ export const publicCarBuildSelect = {
     },
   },
   buildEntries: {
-    orderBy: { occurredAt: "desc" },
+    orderBy: [{ occurredAt: "desc" }, { id: "asc" }],
     take: 20,
     select: {
       id: true,
@@ -38,7 +38,7 @@ export const publicCarBuildSelect = {
     },
   },
   carParts: {
-    orderBy: { installedAt: "desc" },
+    orderBy: [{ installedAt: "desc" }, { partId: "asc" }],
     take: 24,
     select: {
       installedAt: true,
@@ -55,7 +55,7 @@ export const publicCarBuildSelect = {
     },
   },
   posts: {
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
     take: 6,
     select: {
       id: true,
