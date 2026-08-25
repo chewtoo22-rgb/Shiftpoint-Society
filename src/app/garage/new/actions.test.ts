@@ -100,11 +100,42 @@ describe("garage car creation boundary", () => {
 
     await expect(createGarageCar(initialState, formData)).resolves.toEqual({
       error: expect.stringContaining("Check the machine details"),
+      values: {
+        year: "1700",
+        make: "F",
+        model: "Contour SVT",
+        trim: "",
+        nickname: "",
+        engine: "",
+        drivetrain: "",
+        powerHp: "9001",
+      },
     });
 
     expect(mocks.getCurrentMember).not.toHaveBeenCalled();
     expect(mocks.carCreate).not.toHaveBeenCalled();
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
     expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
+  it("bounds echoed invalid values before returning them to the onboarding form", async () => {
+    const formData = new FormData();
+    formData.set("year", "17000");
+    formData.set("make", "M".repeat(120));
+    formData.set("model", "Contour SVT");
+    formData.set("engine", "E".repeat(180));
+    formData.set("powerHp", "99999");
+
+    const result = await createGarageCar(initialState, formData);
+
+    expect(result.error).toContain("Check the machine details");
+    expect(result.values).toMatchObject({
+      year: "1700",
+      make: "M".repeat(80),
+      engine: "E".repeat(120),
+      powerHp: "9999",
+    });
+    expect(mocks.getCurrentMember).not.toHaveBeenCalled();
+    expect(mocks.carCreate).not.toHaveBeenCalled();
   });
 });
