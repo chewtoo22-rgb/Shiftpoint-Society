@@ -75,23 +75,35 @@ describe("build update ownership and integrity boundary", () => {
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/u/boosted_svt/cars/car-1");
   });
 
-  it("returns a recoverable validation state before ownership lookup or persistence", async () => {
+  it("returns field-specific validation state before ownership lookup or persistence", async () => {
     const formData = new FormData();
     formData.set("carId", "car-1");
     formData.set("title", "x");
     formData.set("body", "x");
 
-    await expect(addBuildUpdate(initialState, formData)).resolves.toEqual({
-      error: "Check the build update. Title and details must each be at least 3 characters and stay within their limits.",
-      values: {
-        title: "x",
-        body: "x",
-      },
-    });
+    const result = await addBuildUpdate(initialState, formData);
 
+    expect(result.error).toBe("Check the build update. Fix the highlighted fields and try again.");
+    expect(result.values).toEqual({ title: "x", body: "x" });
+    expect(result.fieldErrors?.title?.length).toBeGreaterThan(0);
+    expect(result.fieldErrors?.body?.length).toBeGreaterThan(0);
     expect(mocks.requireOwnedCar).not.toHaveBeenCalled();
     expect(mocks.buildEntryCreate).not.toHaveBeenCalled();
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("does not invent field errors for a valid field when another field is invalid", async () => {
+    const formData = new FormData();
+    formData.set("carId", "car-1");
+    formData.set("title", "Dyno baseline");
+    formData.set("body", "x");
+
+    const result = await addBuildUpdate(initialState, formData);
+
+    expect(result.fieldErrors?.title).toBeUndefined();
+    expect(result.fieldErrors?.body?.length).toBeGreaterThan(0);
+    expect(mocks.requireOwnedCar).not.toHaveBeenCalled();
+    expect(mocks.buildEntryCreate).not.toHaveBeenCalled();
   });
 
   it("bounds echoed validation values before returning them to the client", async () => {
@@ -105,6 +117,8 @@ describe("build update ownership and integrity boundary", () => {
     expect(result.error).toBeTruthy();
     expect(result.values?.title).toHaveLength(120);
     expect(result.values?.body).toHaveLength(4000);
+    expect(result.fieldErrors?.title?.length).toBeGreaterThan(0);
+    expect(result.fieldErrors?.body?.length).toBeGreaterThan(0);
     expect(mocks.requireOwnedCar).not.toHaveBeenCalled();
     expect(mocks.buildEntryCreate).not.toHaveBeenCalled();
   });
