@@ -104,7 +104,7 @@ describe("feed authenticated write boundaries", () => {
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });
 
-  it("binds comments to the authenticated member and trims comment text", async () => {
+  it("binds comments to the authenticated member, trims text, and refreshes feed plus detail", async () => {
     const formData = new FormData();
     formData.set("postId", "post-1");
     formData.set("body", "  Nice build.  ");
@@ -116,9 +116,10 @@ describe("feed authenticated write boundaries", () => {
       data: { postId: "post-1", authorId: "member-1", body: "Nice build." },
     });
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/feed");
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/feed/post-1");
   });
 
-  it("does not create comments for missing posts", async () => {
+  it("does not create comments or refresh caches for missing posts", async () => {
     mocks.postFindUnique.mockResolvedValue(null);
     const formData = new FormData();
     formData.set("postId", "missing-post");
@@ -129,7 +130,7 @@ describe("feed authenticated write boundaries", () => {
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });
 
-  it("keys reactions to the authenticated member instead of client identity", async () => {
+  it("keys reactions to the authenticated member and refreshes feed plus detail", async () => {
     const formData = new FormData();
     formData.set("postId", "post-1");
     formData.set("type", "WRENCH");
@@ -142,9 +143,10 @@ describe("feed authenticated write boundaries", () => {
     });
     expect(mocks.reactionDelete).not.toHaveBeenCalled();
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/feed");
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/feed/post-1");
   });
 
-  it("removes only the authenticated member's exact existing reaction", async () => {
+  it("removes only the authenticated member's exact existing reaction and refreshes detail", async () => {
     mocks.reactionFindUnique.mockResolvedValue({ id: "reaction-1" });
     const formData = new FormData();
     formData.set("postId", "post-1");
@@ -158,5 +160,6 @@ describe("feed authenticated write boundaries", () => {
     expect(mocks.reactionFindUnique).toHaveBeenCalledWith({ where: key });
     expect(mocks.reactionDelete).toHaveBeenCalledWith({ where: key });
     expect(mocks.reactionCreate).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/feed/post-1");
   });
 });
