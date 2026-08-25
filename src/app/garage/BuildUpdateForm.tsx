@@ -9,9 +9,15 @@ type BuildUpdateFormProps = {
   carId: string;
 };
 
+function fieldDescriptionId(field: "title" | "body", hasError: boolean) {
+  return hasError ? `build-update-${field}-error` : undefined;
+}
+
 export function BuildUpdateForm({ carId }: BuildUpdateFormProps) {
   const [state, formAction, pending] = useActionState(addBuildUpdate, initialState);
   const formRef = useRef<HTMLFormElement>(null);
+  const titleError = state.fieldErrors?.title?.[0];
+  const bodyError = state.fieldErrors?.body?.[0];
 
   useEffect(() => {
     if (state.success) {
@@ -33,8 +39,16 @@ export function BuildUpdateForm({ carId }: BuildUpdateFormProps) {
         required
         placeholder="What changed?"
         aria-label="Build update title"
+        aria-invalid={Boolean(titleError)}
+        aria-describedby={fieldDescriptionId("title", Boolean(titleError))}
         defaultValue={state.values?.title}
       />
+      {titleError ? (
+        <p id="build-update-title-error" role="alert">
+          {titleError}
+        </p>
+      ) : null}
+
       <textarea
         name="body"
         minLength={3}
@@ -42,8 +56,15 @@ export function BuildUpdateForm({ carId }: BuildUpdateFormProps) {
         required
         placeholder="Parts, settings, numbers, results, lessons..."
         aria-label="Build update details"
+        aria-invalid={Boolean(bodyError)}
+        aria-describedby={fieldDescriptionId("body", Boolean(bodyError))}
         defaultValue={state.values?.body}
       />
+      {bodyError ? (
+        <p id="build-update-body-error" role="alert">
+          {bodyError}
+        </p>
+      ) : null}
 
       {state.error ? (
         <p id="build-update-error" role="alert" aria-live="polite">
