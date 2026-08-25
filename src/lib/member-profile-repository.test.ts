@@ -76,4 +76,11 @@ describe("publicMemberProfileSelect", () => {
     expect(PUBLIC_MEMBER_GARAGE_MAX_CARS).toBe(50);
     expect(publicMemberProfileSelect._count).toEqual({ select: { cars: true } });
   });
+
+  it("orders bounded public garage rows deterministically", () => {
+    expect(publicMemberProfileSelect.cars.orderBy).toEqual([
+      { updatedAt: "desc" },
+      { id: "asc" },
+    ]);
+  });
 });
