@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BuildUpdateForm } from "@/app/garage/BuildUpdateForm";
-import { addInstalledPart } from "@/app/garage/parts/actions";
+import { InstalledPartForm } from "@/app/garage/parts/InstalledPartForm";
 import { getGarage, getGarageSwitcher } from "@/lib/garage-repository";
 
 export const dynamic = "force-dynamic";
@@ -85,15 +85,7 @@ export default async function GaragePage({ searchParams }: GaragePageProps) {
           <h2>LOG INSTALLED PART</h2>
           <p>Build the exact machine history, one installed component at a time.</p>
         </div>
-        <form action={addInstalledPart}>
-          <input type="hidden" name="carId" value={garage.id} />
-          <input name="brand" maxLength={80} required placeholder="Brand" aria-label="Part brand" />
-          <input name="name" maxLength={140} required placeholder="Part name" aria-label="Part name" />
-          <input name="category" maxLength={80} required placeholder="Category" aria-label="Part category" />
-          <input name="partNumber" maxLength={80} placeholder="Part number (optional)" aria-label="Part number" />
-          <textarea name="notes" maxLength={500} placeholder="Install notes, settings, fitment..." aria-label="Part notes" />
-          <button type="submit">LOG PART →</button>
-        </form>
+        <InstalledPartForm carId={garage.id} />
       </section>
 
       <section className="garageColumns">
