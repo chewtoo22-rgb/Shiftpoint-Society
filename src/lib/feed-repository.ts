@@ -11,7 +11,7 @@ export const COMMUNITY_FEED_ORDER = [
 ] satisfies Prisma.PostOrderByWithRelationInput[];
 
 export const COMMUNITY_COMMENT_ORDER = [
-  { createdAt: "asc" },
+  { createdAt: "desc" },
   { id: "asc" },
 ] satisfies Prisma.CommentOrderByWithRelationInput[];
 
