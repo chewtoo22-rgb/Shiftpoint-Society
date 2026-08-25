@@ -14,8 +14,43 @@ const installedPartSchema = z.object({
   notes: z.string().trim().max(500).optional(),
 });
 
-export async function addInstalledPart(formData: FormData) {
-  const input = installedPartSchema.parse({
+export type InstalledPartFormValues = {
+  brand: string;
+  name: string;
+  category: string;
+  partNumber: string;
+  notes: string;
+};
+
+export type InstalledPartActionState = {
+  error: string | null;
+  success?: boolean;
+  values?: InstalledPartFormValues;
+};
+
+const INVALID_INSTALLED_PART_MESSAGE =
+  "Check the part details. Brand is required, part name and category must be at least 2 characters, and all fields must stay within their limits.";
+
+function submittedValues(formData: FormData): InstalledPartFormValues {
+  const bounded = (name: string, maxLength: number) => {
+    const value = formData.get(name);
+    return typeof value === "string" ? value.slice(0, maxLength) : "";
+  };
+
+  return {
+    brand: bounded("brand", 80),
+    name: bounded("name", 140),
+    category: bounded("category", 80),
+    partNumber: bounded("partNumber", 80),
+    notes: bounded("notes", 500),
+  };
+}
+
+export async function addInstalledPart(
+  _previousState: InstalledPartActionState,
+  formData: FormData,
+): Promise<InstalledPartActionState> {
+  const parsed = installedPartSchema.safeParse({
     carId: formData.get("carId"),
     brand: formData.get("brand"),
     name: formData.get("name"),
@@ -24,6 +59,14 @@ export async function addInstalledPart(formData: FormData) {
     notes: formData.get("notes") || undefined,
   });
 
+  if (!parsed.success) {
+    return {
+      error: INVALID_INSTALLED_PART_MESSAGE,
+      values: submittedValues(formData),
+    };
+  }
+
+  const input = parsed.data;
   const { member } = await requireOwnedCar(input.carId);
 
   let part = await db.part.findFirst({
@@ -57,4 +100,6 @@ export async function addInstalledPart(formData: FormData) {
   revalidatePath("/garage");
   revalidatePath(`/u/${member.handle}`);
   revalidatePath(`/u/${member.handle}/cars/${input.carId}`);
+
+  return { error: null, success: true };
 }
