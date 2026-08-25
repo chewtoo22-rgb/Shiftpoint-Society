@@ -53,9 +53,9 @@ describe("community timeline ordering", () => {
     ]);
   });
 
-  it("keeps bounded comment previews stable when comments share a timestamp", () => {
+  it("keeps bounded comment previews on the latest entries with stable tie-breaking", () => {
     expect(COMMUNITY_COMMENT_ORDER).toEqual([
-      { createdAt: "asc" },
+      { createdAt: "desc" },
       { id: "asc" },
     ]);
   });
