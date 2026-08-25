@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   getCurrentMember: vi.fn(),
   postFindFirst: vi.fn(),
   uploadIntentFindUnique: vi.fn(),
+  transactionUploadIntentFindUnique: vi.fn(),
   postMediaFindUnique: vi.fn(),
   postMediaFindMany: vi.fn(),
   postMediaCreate: vi.fn(),
@@ -39,7 +40,7 @@ const media = {
 const objectKey = "members/member-1/post-media/upload-1.jpg";
 const mediaUrl = "https://media.shiftpoint.example/upload-1.jpg";
 
-function matchingIntent() {
+function matchingIntent(overrides: Record<string, unknown> = {}) {
   return {
     ownerId: "member-1",
     objectKey,
@@ -48,6 +49,7 @@ function matchingIntent() {
     mimeType: "image/jpeg",
     sizeBytes: 1024,
     originalName: "launch.jpg",
+    ...overrides,
   };
 }
 
@@ -59,6 +61,7 @@ function transactionClient() {
       create: mocks.postMediaCreate,
     },
     postMediaUploadIntent: {
+      findUnique: mocks.transactionUploadIntentFindUnique,
       update: mocks.uploadIntentUpdate,
     },
   };
@@ -70,6 +73,7 @@ describe("post media completion persistence boundary", () => {
     mocks.getCurrentMember.mockResolvedValue({ id: "member-1" });
     mocks.postFindFirst.mockResolvedValue({ id: "post-1" });
     mocks.uploadIntentFindUnique.mockResolvedValue(matchingIntent());
+    mocks.transactionUploadIntentFindUnique.mockResolvedValue(matchingIntent());
     mocks.postMediaFindUnique.mockResolvedValue(null);
     mocks.postMediaFindMany.mockResolvedValue([
       { sortOrder: 0 },
@@ -85,7 +89,7 @@ describe("post media completion persistence boundary", () => {
     mocks.transaction.mockImplementation(async (callback) => callback(transactionClient()));
   });
 
-  it("allocates the first free attachment slot inside a serializable transaction", async () => {
+  it("revalidates the upload intent and allocates the first free slot inside a serializable transaction", async () => {
     await expect(
       persistPostMediaCompletion({ postId: "post-1", objectKey, mediaUrl, media }),
     ).resolves.toEqual(expect.objectContaining({ id: "media-1", sortOrder: 2 }));
@@ -93,6 +97,9 @@ describe("post media completion persistence boundary", () => {
     expect(mocks.transaction).toHaveBeenCalledTimes(1);
     expect(mocks.transaction.mock.calls[0]?.[1]).toEqual({
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    });
+    expect(mocks.transactionUploadIntentFindUnique).toHaveBeenCalledWith({
+      where: { objectKey },
     });
     expect(mocks.postMediaFindMany).toHaveBeenCalledWith({
       where: { postId: "post-1" },
@@ -105,6 +112,34 @@ describe("post media completion persistence boundary", () => {
         sortOrder: 2,
       }),
     });
+  });
+
+  it("fails closed if upload-intent ownership changes before persistence", async () => {
+    mocks.transactionUploadIntentFindUnique.mockResolvedValue(
+      matchingIntent({ ownerId: "member-2" }),
+    );
+
+    await expect(
+      persistPostMediaCompletion({ postId: "post-1", objectKey, mediaUrl, media }),
+    ).rejects.toThrow("Upload intent not found for current member.");
+
+    expect(mocks.postMediaFindUnique).not.toHaveBeenCalled();
+    expect(mocks.postMediaCreate).not.toHaveBeenCalled();
+    expect(mocks.uploadIntentUpdate).not.toHaveBeenCalled();
+  });
+
+  it("fails closed if upload-intent metadata changes before persistence", async () => {
+    mocks.transactionUploadIntentFindUnique.mockResolvedValue(
+      matchingIntent({ sizeBytes: 2048 }),
+    );
+
+    await expect(
+      persistPostMediaCompletion({ postId: "post-1", objectKey, mediaUrl, media }),
+    ).rejects.toThrow("Uploaded media does not match its authorized upload intent.");
+
+    expect(mocks.postMediaFindUnique).not.toHaveBeenCalled();
+    expect(mocks.postMediaCreate).not.toHaveBeenCalled();
+    expect(mocks.uploadIntentUpdate).not.toHaveBeenCalled();
   });
 
   it("reuses a removed middle slot instead of colliding with a later attachment", async () => {
