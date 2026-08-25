@@ -73,7 +73,7 @@ describe("garage repository authentication boundary", () => {
     expect(mocks.carPartCount).not.toHaveBeenCalled();
   });
 
-  it("bounds the private parts preview while keeping accurate owner-scoped ledger counts", async () => {
+  it("bounds private parts and build previews while keeping accurate owner-scoped totals", async () => {
     mocks.getCurrentMember.mockResolvedValue({ id: "member-1" });
     mocks.carFindFirst.mockResolvedValue({
       id: "car-1",
@@ -89,7 +89,14 @@ describe("garage repository authentication boundary", () => {
       isVerified: false,
       createdAt: new Date("2024-01-01T00:00:00Z"),
       updatedAt: new Date("2026-08-25T00:00:00Z"),
-      buildEntries: [],
+      buildEntries: [
+        {
+          id: "entry-1",
+          occurredAt: new Date("2026-08-21T00:00:00Z"),
+          title: "Dyno",
+          body: "New baseline",
+        },
+      ],
       carParts: [
         {
           installedAt: new Date("2026-08-20T00:00:00Z"),
@@ -102,7 +109,7 @@ describe("garage repository authentication boundary", () => {
           },
         },
       ],
-      _count: { carParts: 73 },
+      _count: { carParts: 73, buildEntries: 27 },
     });
     mocks.carPartCount.mockResolvedValue(61);
 
@@ -112,11 +119,15 @@ describe("garage repository authentication boundary", () => {
       expect.objectContaining({
         where: { ownerId: "member-1" },
         include: expect.objectContaining({
+          buildEntries: expect.objectContaining({
+            orderBy: [{ occurredAt: "desc" }, { id: "asc" }],
+            take: 8,
+          }),
           carParts: expect.objectContaining({
             orderBy: [{ installedAt: "desc" }, { partId: "asc" }],
             take: 8,
           }),
-          _count: { select: { carParts: true } },
+          _count: { select: { carParts: true, buildEntries: true } },
         }),
       }),
     );
@@ -128,6 +139,9 @@ describe("garage repository authentication boundary", () => {
         id: "car-1",
         partsLogged: 73,
         partsInstalled: 61,
+        partsPreviewTruncated: true,
+        buildLogTotal: 27,
+        buildLogPreviewTruncated: true,
         mods: [
           {
             type: "SUSPENSION",
@@ -135,6 +149,42 @@ describe("garage repository authentication boundary", () => {
             delta: "24-000000",
           },
         ],
+        timeline: [
+          expect.objectContaining({ title: "Dyno", detail: "New baseline" }),
+        ],
+      }),
+    );
+  });
+
+  it("does not report preview truncation when the visible rows cover the full history", async () => {
+    mocks.getCurrentMember.mockResolvedValue({ id: "member-1" });
+    mocks.carFindFirst.mockResolvedValue({
+      id: "car-1",
+      year: 2000,
+      make: "Ford",
+      model: "Contour SVT",
+      nickname: null,
+      engine: null,
+      drivetrain: null,
+      powerHp: null,
+      quarterMileSeconds: null,
+      quarterMileMph: null,
+      isVerified: false,
+      createdAt: new Date("2026-01-01T00:00:00Z"),
+      updatedAt: new Date("2026-08-25T00:00:00Z"),
+      buildEntries: [],
+      carParts: [],
+      _count: { carParts: 0, buildEntries: 0 },
+    });
+    mocks.carPartCount.mockResolvedValue(0);
+
+    await expect(getGarage()).resolves.toEqual(
+      expect.objectContaining({
+        partsPreviewTruncated: false,
+        buildLogTotal: 0,
+        buildLogPreviewTruncated: false,
+        mods: [],
+        timeline: [],
       }),
     );
   });
