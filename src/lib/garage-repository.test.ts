@@ -71,6 +71,20 @@ describe("garage repository authentication boundary", () => {
     );
   });
 
+  it("bounds and deterministically orders the authenticated garage switcher", async () => {
+    mocks.getCurrentMember.mockResolvedValue({ id: "member-2" });
+    mocks.carFindMany.mockResolvedValue([]);
+
+    await expect(getGarageSwitcher()).resolves.toEqual([]);
+    expect(mocks.carFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { ownerId: "member-2" },
+        orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+        take: 50,
+      }),
+    );
+  });
+
   it("still degrades the authenticated switcher when persistence is unavailable", async () => {
     mocks.getCurrentMember.mockResolvedValue({ id: "member-2" });
     mocks.carFindMany.mockRejectedValue(new Error("database unavailable"));
