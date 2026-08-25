@@ -191,6 +191,15 @@ export function FeedComposer({ cars }: FeedComposerProps) {
 
     startTransition(async () => {
       try {
+        formData.delete("media");
+        let postId = pendingPostIdRef.current;
+        if (!postId) {
+          const post = await createFeedPost(formData);
+          postId = post.id;
+          pendingPostIdRef.current = post.id;
+          setHasPendingPost(true);
+        }
+
         const uploadTargets: UploadTarget[] = new Array(files.length);
         const missingIndexes = files
           .map((file, index) => ({ file, index, cached: uploadCacheRef.current.get(fileFingerprint(file)) }))
@@ -241,15 +250,6 @@ export function FeedComposer({ cars }: FeedComposerProps) {
 
           uploadCacheRef.current.set(fingerprint, { target, uploaded: true, completed: false });
           setUploadStatus(index, "uploaded");
-        }
-
-        formData.delete("media");
-        let postId = pendingPostIdRef.current;
-        if (!postId) {
-          const post = await createFeedPost(formData);
-          postId = post.id;
-          pendingPostIdRef.current = post.id;
-          setHasPendingPost(true);
         }
 
         for (let index = 0; index < uploadTargets.length; index += 1) {
