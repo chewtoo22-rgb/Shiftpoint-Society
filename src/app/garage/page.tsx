@@ -13,7 +13,7 @@ type GaragePageProps = {
 export default async function GaragePage({ searchParams }: GaragePageProps) {
   const params = await searchParams;
   const selectedCarId = params?.car;
-  const [garage, cars] = await Promise.all([
+  const [garage, switcher] = await Promise.all([
     getGarage(selectedCarId),
     getGarageSwitcher(),
   ]);
@@ -24,11 +24,18 @@ export default async function GaragePage({ searchParams }: GaragePageProps) {
     redirect(selectedCarId ? "/garage" : "/garage/new");
   }
 
+  const { cars } = switcher;
+
   return (
     <div className="shell garageShell">
       {cars.length > 1 && (
         <section className="garageSwitcher" aria-label="Garage vehicles">
           <div className="sectionKicker">MY VEHICLES</div>
+          {switcher.isTruncated && (
+            <p className="garageSwitcherNote" role="status">
+              Showing {cars.length} most recently updated of {switcher.total} vehicles.
+            </p>
+          )}
           <div className="garageSwitcherLinks">
             {cars.map((car) => {
               const active = car.id === garage.id;
