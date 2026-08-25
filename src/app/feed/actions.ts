@@ -152,6 +152,7 @@ export async function completeFeedPostMediaUpload(input: {
     },
   });
   revalidatePath("/feed");
+  revalidatePath(`/feed/${media.postId}`);
 
   return {
     id: media.id,
@@ -192,6 +193,7 @@ export async function addFeedComment(formData: FormData) {
   });
 
   revalidatePath("/feed");
+  revalidatePath(`/feed/${post.id}`);
 }
 
 export async function toggleFeedReaction(formData: FormData) {
@@ -235,4 +237,5 @@ export async function toggleFeedReaction(formData: FormData) {
   }
 
   revalidatePath("/feed");
+  revalidatePath(`/feed/${post.id}`);
 }
