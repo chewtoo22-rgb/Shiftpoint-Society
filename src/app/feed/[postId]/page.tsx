@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import styles from "../feed.module.css";
+import { FeedCommentForm } from "../feed-comment-form";
 import { FeedMediaViewer } from "../feed-media-viewer";
-import { addFeedComment, toggleFeedReaction } from "../actions";
+import { toggleFeedReaction } from "../actions";
 import { PostShareButton } from "./post-share-button";
 import { getCurrentMember } from "@/lib/current-member";
 import { getCommunityFeedPost } from "@/lib/feed-repository";
@@ -165,11 +166,7 @@ export default async function FeedPostPage({ params }: FeedPostPageProps) {
                 </p>
               )}
 
-              <form action={addFeedComment} className={styles.commentForm}>
-                <input type="hidden" name="postId" value={post.id} />
-                <input name="body" required maxLength={600} placeholder="Add to the wrench talk…" />
-                <button type="submit">REPLY →</button>
-              </form>
+              <FeedCommentForm postId={post.id} />
             </section>
           </article>
         </div>
