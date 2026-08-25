@@ -1,6 +1,7 @@
 import Link from "next/link";
 import styles from "./feed.module.css";
-import { addFeedComment, toggleFeedReaction } from "./actions";
+import { toggleFeedReaction } from "./actions";
+import { FeedCommentForm } from "./feed-comment-form";
 import { FeedComposer } from "./feed-composer";
 import { FeedMediaViewer } from "./feed-media-viewer";
 import { getCurrentMember } from "@/lib/current-member";
@@ -205,11 +206,7 @@ export default async function FeedPage() {
                       </p>
                     )}
 
-                    <form action={addFeedComment} className={styles.commentForm}>
-                      <input type="hidden" name="postId" value={post.id} />
-                      <input name="body" required maxLength={600} placeholder="Add to the wrench talk…" />
-                      <button type="submit">REPLY →</button>
-                    </form>
+                    <FeedCommentForm postId={post.id} />
                   </section>
                 </article>
               );
