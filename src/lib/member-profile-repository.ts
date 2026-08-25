@@ -1,3 +1,5 @@
+import type { Prisma } from "@prisma/client";
+
 import { db } from "./db";
 import { normalizeSocietyHandle } from "./society-handle";
 
@@ -39,7 +41,7 @@ export const publicMemberProfileSelect = {
       },
     },
   },
-} as const;
+} satisfies Prisma.UserSelect;
 
 export function buildPublicMemberLookup(handle: string) {
   return { handle: normalizeSocietyHandle(handle) };
