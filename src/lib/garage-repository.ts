@@ -4,6 +4,8 @@ import { demoGarage, type GarageViewModel } from "./garage";
 
 type GarageRecord = Awaited<ReturnType<typeof loadCar>>;
 
+const GARAGE_SWITCHER_LIMIT = 50;
+
 async function loadCar(ownerId: string, carId?: string) {
   return db.car.findFirst({
     where: carId ? { id: carId, ownerId } : { ownerId },
@@ -90,7 +92,8 @@ export async function getGarageSwitcher() {
   try {
     return await db.car.findMany({
       where: { ownerId: member.id },
-      orderBy: { updatedAt: "desc" },
+      orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+      take: GARAGE_SWITCHER_LIMIT,
       select: {
         id: true,
         year: true,
