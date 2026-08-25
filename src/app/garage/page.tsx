@@ -19,7 +19,9 @@ export default async function GaragePage({ searchParams }: GaragePageProps) {
   ]);
 
   if (!garage) {
-    redirect("/garage");
+    // An invalid/foreign explicit selection should fall back to the member's canonical
+    // garage. A healthy empty garage should continue into first-car onboarding.
+    redirect(selectedCarId ? "/garage" : "/garage/new");
   }
 
   return (
