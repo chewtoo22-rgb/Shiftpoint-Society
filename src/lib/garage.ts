@@ -24,6 +24,9 @@ export type GarageViewModel = {
   wrenchScore: number;
   partsLogged: number;
   partsInstalled: number;
+  partsPreviewTruncated: boolean;
+  buildLogTotal: number;
+  buildLogPreviewTruncated: boolean;
   buildAge: string;
   lastUpdated: string;
   mods: GarageMod[];
@@ -46,6 +49,9 @@ export const demoGarage: GarageViewModel = {
   wrenchScore: 87,
   partsLogged: 24,
   partsInstalled: 19,
+  partsPreviewTruncated: true,
+  buildLogTotal: 12,
+  buildLogPreviewTruncated: true,
   buildAge: "04Y",
   lastUpdated: "Last updated 3 days ago",
   mods: [
