@@ -55,7 +55,7 @@ vi.mock("@/lib/post-media-upload", () => ({
   authorizePostMediaUploads: mocks.authorizePostMediaUploads,
 }));
 
-import { addFeedComment, createFeedPost, toggleFeedReaction } from "./actions";
+import { addFeedComment, createFeedPost, submitFeedComment, toggleFeedReaction } from "./actions";
 
 describe("feed authenticated write boundaries", () => {
   beforeEach(() => {
@@ -117,6 +117,38 @@ describe("feed authenticated write boundaries", () => {
     });
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/feed");
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/feed/post-1");
+  });
+
+  it("rejects malformed comments before authentication or database access and preserves bounded input", async () => {
+    const formData = new FormData();
+    formData.set("postId", "post-1");
+    formData.set("body", "x".repeat(650));
+
+    const state = await submitFeedComment({ error: null }, formData);
+
+    expect(state.error).toBe("Fix the highlighted comment field and try again.");
+    expect(state.fieldErrors?.body?.[0]).toBe("Keep comments to 600 characters.");
+    expect(state.value).toHaveLength(600);
+    expect(mocks.getCurrentMember).not.toHaveBeenCalled();
+    expect(mocks.postFindUnique).not.toHaveBeenCalled();
+    expect(mocks.commentCreate).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("returns a recoverable state when the target post disappears", async () => {
+    mocks.postFindUnique.mockResolvedValue(null);
+    const formData = new FormData();
+    formData.set("postId", "missing-post");
+    formData.set("body", "  Keep this reply around.  ");
+
+    const state = await submitFeedComment({ error: null }, formData);
+
+    expect(state).toEqual({
+      error: "This post is no longer available. Refresh the feed before replying.",
+      value: "Keep this reply around.",
+    });
+    expect(mocks.commentCreate).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });
 
   it("does not create comments or refresh caches for missing posts", async () => {
