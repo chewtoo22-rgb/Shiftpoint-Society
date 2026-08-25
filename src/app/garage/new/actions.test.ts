@@ -91,15 +91,17 @@ describe("garage car creation boundary", () => {
     });
   });
 
-  it("returns a recoverable validation error before identity lookup or database writes", async () => {
+  it("returns recoverable field errors before identity lookup or database writes", async () => {
     const formData = new FormData();
     formData.set("year", "1700");
     formData.set("make", "F");
     formData.set("model", "Contour SVT");
     formData.set("powerHp", "9001");
 
-    await expect(createGarageCar(initialState, formData)).resolves.toEqual({
-      error: expect.stringContaining("Check the machine details"),
+    const result = await createGarageCar(initialState, formData);
+
+    expect(result).toMatchObject({
+      error: expect.stringContaining("highlighted fields"),
       values: {
         year: "1700",
         make: "F",
@@ -111,6 +113,10 @@ describe("garage car creation boundary", () => {
         powerHp: "9001",
       },
     });
+    expect(result.fieldErrors?.year?.length).toBeGreaterThan(0);
+    expect(result.fieldErrors?.make?.length).toBeGreaterThan(0);
+    expect(result.fieldErrors?.powerHp?.length).toBeGreaterThan(0);
+    expect(result.fieldErrors?.model).toBeUndefined();
 
     expect(mocks.getCurrentMember).not.toHaveBeenCalled();
     expect(mocks.carCreate).not.toHaveBeenCalled();
@@ -128,13 +134,17 @@ describe("garage car creation boundary", () => {
 
     const result = await createGarageCar(initialState, formData);
 
-    expect(result.error).toContain("Check the machine details");
+    expect(result.error).toContain("highlighted fields");
     expect(result.values).toMatchObject({
       year: "1700",
       make: "M".repeat(80),
       engine: "E".repeat(120),
       powerHp: "9999",
     });
+    expect(result.fieldErrors?.year?.length).toBeGreaterThan(0);
+    expect(result.fieldErrors?.make?.length).toBeGreaterThan(0);
+    expect(result.fieldErrors?.engine?.length).toBeGreaterThan(0);
+    expect(result.fieldErrors?.powerHp?.length).toBeGreaterThan(0);
     expect(mocks.getCurrentMember).not.toHaveBeenCalled();
     expect(mocks.carCreate).not.toHaveBeenCalled();
   });
