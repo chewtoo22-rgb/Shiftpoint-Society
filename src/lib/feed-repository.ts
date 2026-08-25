@@ -5,6 +5,21 @@ import { db } from "./db";
 export const COMMUNITY_FEED_DEFAULT_LIMIT = 30;
 export const COMMUNITY_FEED_MAX_LIMIT = 50;
 
+export const COMMUNITY_FEED_ORDER = [
+  { createdAt: "desc" },
+  { id: "asc" },
+] satisfies Prisma.PostOrderByWithRelationInput[];
+
+export const COMMUNITY_COMMENT_ORDER = [
+  { createdAt: "asc" },
+  { id: "asc" },
+] satisfies Prisma.CommentOrderByWithRelationInput[];
+
+export const COMMUNITY_BUILD_ENTRY_ORDER = [
+  { occurredAt: "desc" },
+  { id: "asc" },
+] satisfies Prisma.BuildEntryOrderByWithRelationInput[];
+
 export function normalizeCommunityFeedLimit(limit = COMMUNITY_FEED_DEFAULT_LIMIT) {
   if (!Number.isFinite(limit)) return COMMUNITY_FEED_DEFAULT_LIMIT;
 
@@ -55,7 +70,7 @@ const feedPostInclude = {
     },
   },
   comments: {
-    orderBy: { createdAt: "asc" },
+    orderBy: COMMUNITY_COMMENT_ORDER,
     take: 8,
     select: {
       id: true,
@@ -95,7 +110,7 @@ const feedPostDetailInclude = {
       heroImageUrl: true,
       buildEntries: {
         take: 3,
-        orderBy: { occurredAt: "desc" },
+        orderBy: COMMUNITY_BUILD_ENTRY_ORDER,
         select: {
           id: true,
           title: true,
@@ -118,7 +133,7 @@ const feedPostDetailInclude = {
 export async function getCommunityFeed(limit = COMMUNITY_FEED_DEFAULT_LIMIT) {
   return db.post.findMany({
     take: normalizeCommunityFeedLimit(limit),
-    orderBy: { createdAt: "desc" },
+    orderBy: COMMUNITY_FEED_ORDER,
     include: feedPostInclude,
   });
 }
