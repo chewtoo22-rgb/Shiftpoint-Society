@@ -102,6 +102,18 @@ export function FeedComposer({ cars }: FeedComposerProps) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!hasPendingPost) return;
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasPendingPost]);
+
   function clearMediaPreviews() {
     previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
     previewUrlsRef.current = [];
@@ -347,6 +359,11 @@ export function FeedComposer({ cars }: FeedComposerProps) {
             </li>
           ))}
         </ul>
+      )}
+      {hasPendingPost && (
+        <p role="status" aria-live="polite">
+          Post saved. Keep this tab open until the remaining media is attached; retry will continue on this same post.
+        </p>
       )}
       <div className={styles.composerRow}>
         <select name="carId" defaultValue="" disabled={lockPostFields}>
