@@ -15,7 +15,7 @@ export const publicMemberProfileSelect = {
     },
   },
   cars: {
-    orderBy: { updatedAt: "desc" },
+    orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
     take: PUBLIC_MEMBER_GARAGE_MAX_CARS,
     select: {
       id: true,
