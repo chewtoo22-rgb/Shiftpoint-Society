@@ -51,11 +51,11 @@ describe("garage repository authentication boundary", () => {
     );
   });
 
-  it("still uses demo garage data when an authenticated member has no persisted cars yet", async () => {
+  it("keeps a healthy empty garage distinct from demo fallback data", async () => {
     mocks.getCurrentMember.mockResolvedValue({ id: "member-1" });
     mocks.carFindFirst.mockResolvedValue(null);
 
-    await expect(getGarage()).resolves.toEqual(demoGarage);
+    await expect(getGarage()).resolves.toBeNull();
     expect(mocks.carFindFirst).toHaveBeenCalledWith(
       expect.objectContaining({ where: { ownerId: "member-1" } }),
     );
