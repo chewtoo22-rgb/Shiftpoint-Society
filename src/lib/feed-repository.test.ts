@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  COMMUNITY_BUILD_ENTRY_ORDER,
+  COMMUNITY_COMMENT_ORDER,
   COMMUNITY_FEED_DEFAULT_LIMIT,
   COMMUNITY_FEED_MAX_LIMIT,
+  COMMUNITY_FEED_ORDER,
   buildCommunityFeedPostWhere,
   normalizeCommunityFeedLimit,
 } from "./feed-repository";
@@ -39,5 +42,28 @@ describe("normalizeCommunityFeedLimit", () => {
     expect(normalizeCommunityFeedLimit(12.9)).toBe(12);
     expect(normalizeCommunityFeedLimit(Number.NaN)).toBe(COMMUNITY_FEED_DEFAULT_LIMIT);
     expect(normalizeCommunityFeedLimit(Number.POSITIVE_INFINITY)).toBe(COMMUNITY_FEED_DEFAULT_LIMIT);
+  });
+});
+
+describe("community timeline ordering", () => {
+  it("keeps feed cards stable when posts share the same timestamp", () => {
+    expect(COMMUNITY_FEED_ORDER).toEqual([
+      { createdAt: "desc" },
+      { id: "asc" },
+    ]);
+  });
+
+  it("keeps bounded comment previews stable when comments share a timestamp", () => {
+    expect(COMMUNITY_COMMENT_ORDER).toEqual([
+      { createdAt: "asc" },
+      { id: "asc" },
+    ]);
+  });
+
+  it("keeps post-detail build previews stable when milestones share a timestamp", () => {
+    expect(COMMUNITY_BUILD_ENTRY_ORDER).toEqual([
+      { occurredAt: "desc" },
+      { id: "asc" },
+    ]);
   });
 });
