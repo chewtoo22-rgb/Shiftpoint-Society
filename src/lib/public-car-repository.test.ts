@@ -78,4 +78,19 @@ describe("publicCarBuildSelect", () => {
     expect(publicCarBuildSelect.posts.select).not.toHaveProperty("authorId");
     expect(publicCarBuildSelect.posts.select).not.toHaveProperty("carId");
   });
+
+  it("orders related public build data deterministically when timestamps tie", () => {
+    expect(publicCarBuildSelect.buildEntries.orderBy).toEqual([
+      { occurredAt: "desc" },
+      { id: "asc" },
+    ]);
+    expect(publicCarBuildSelect.carParts.orderBy).toEqual([
+      { installedAt: "desc" },
+      { partId: "asc" },
+    ]);
+    expect(publicCarBuildSelect.posts.orderBy).toEqual([
+      { createdAt: "desc" },
+      { id: "asc" },
+    ]);
+  });
 });
