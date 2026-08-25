@@ -54,7 +54,6 @@ export type FeedCommentActionState = {
 };
 
 export async function createFeedPost(formData: FormData) {
-  const member = await getCurrentMember();
   const parsed = postSchema.safeParse({
     body: formData.get("body"),
     carId: formData.get("carId") || undefined,
@@ -65,6 +64,7 @@ export async function createFeedPost(formData: FormData) {
     throw new Error(parsed.error.issues[0]?.message ?? "Invalid post");
   }
 
+  const member = await getCurrentMember();
   let carId: string | undefined;
   if (parsed.data.carId) {
     const owned = await requireOwnedCar(parsed.data.carId);
@@ -240,7 +240,6 @@ export async function submitFeedComment(
 }
 
 export async function toggleFeedReaction(formData: FormData) {
-  const member = await getCurrentMember();
   const parsed = reactionSchema.safeParse({
     postId: formData.get("postId"),
     type: formData.get("type"),
@@ -250,6 +249,7 @@ export async function toggleFeedReaction(formData: FormData) {
     throw new Error(parsed.error.issues[0]?.message ?? "Invalid reaction");
   }
 
+  const member = await getCurrentMember();
   const post = await db.post.findUnique({
     where: { id: parsed.data.postId },
     select: { id: true },
