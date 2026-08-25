@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   postFindFirst: vi.fn(),
   uploadIntentFindUnique: vi.fn(),
   postMediaFindUnique: vi.fn(),
-  postMediaCount: vi.fn(),
+  postMediaFindMany: vi.fn(),
   postMediaCreate: vi.fn(),
   uploadIntentUpdate: vi.fn(),
   transaction: vi.fn(),
@@ -55,7 +55,7 @@ function transactionClient() {
   return {
     postMedia: {
       findUnique: mocks.postMediaFindUnique,
-      count: mocks.postMediaCount,
+      findMany: mocks.postMediaFindMany,
       create: mocks.postMediaCreate,
     },
     postMediaUploadIntent: {
@@ -71,7 +71,10 @@ describe("post media completion persistence boundary", () => {
     mocks.postFindFirst.mockResolvedValue({ id: "post-1" });
     mocks.uploadIntentFindUnique.mockResolvedValue(matchingIntent());
     mocks.postMediaFindUnique.mockResolvedValue(null);
-    mocks.postMediaCount.mockResolvedValue(2);
+    mocks.postMediaFindMany.mockResolvedValue([
+      { sortOrder: 0 },
+      { sortOrder: 1 },
+    ]);
     mocks.postMediaCreate.mockResolvedValue({
       id: "media-1",
       postId: "post-1",
@@ -82,7 +85,7 @@ describe("post media completion persistence boundary", () => {
     mocks.transaction.mockImplementation(async (callback) => callback(transactionClient()));
   });
 
-  it("allocates the attachment slot and enforces the cap inside a serializable transaction", async () => {
+  it("allocates the first free attachment slot inside a serializable transaction", async () => {
     await expect(
       persistPostMediaCompletion({ postId: "post-1", objectKey, mediaUrl, media }),
     ).resolves.toEqual(expect.objectContaining({ id: "media-1", sortOrder: 2 }));
@@ -91,7 +94,10 @@ describe("post media completion persistence boundary", () => {
     expect(mocks.transaction.mock.calls[0]?.[1]).toEqual({
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     });
-    expect(mocks.postMediaCount).toHaveBeenCalledWith({ where: { postId: "post-1" } });
+    expect(mocks.postMediaFindMany).toHaveBeenCalledWith({
+      where: { postId: "post-1" },
+      select: { sortOrder: true },
+    });
     expect(mocks.postMediaCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
         postId: "post-1",
@@ -101,8 +107,35 @@ describe("post media completion persistence boundary", () => {
     });
   });
 
-  it("fails before creating media when all four attachment slots are already occupied", async () => {
-    mocks.postMediaCount.mockResolvedValue(4);
+  it("reuses a removed middle slot instead of colliding with a later attachment", async () => {
+    mocks.postMediaFindMany.mockResolvedValue([
+      { sortOrder: 0 },
+      { sortOrder: 2 },
+      { sortOrder: 3 },
+    ]);
+    mocks.postMediaCreate.mockResolvedValue({
+      id: "media-gap",
+      postId: "post-1",
+      objectKey,
+      sortOrder: 1,
+    });
+
+    await expect(
+      persistPostMediaCompletion({ postId: "post-1", objectKey, mediaUrl, media }),
+    ).resolves.toEqual(expect.objectContaining({ id: "media-gap", sortOrder: 1 }));
+
+    expect(mocks.postMediaCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({ sortOrder: 1 }),
+    });
+  });
+
+  it("fails before creating media when all four attachment slots are occupied", async () => {
+    mocks.postMediaFindMany.mockResolvedValue([
+      { sortOrder: 0 },
+      { sortOrder: 1 },
+      { sortOrder: 2 },
+      { sortOrder: 3 },
+    ]);
 
     await expect(
       persistPostMediaCompletion({ postId: "post-1", objectKey, mediaUrl, media }),
@@ -125,7 +158,7 @@ describe("post media completion persistence boundary", () => {
       persistPostMediaCompletion({ postId: "post-1", objectKey, mediaUrl, media }),
     ).resolves.toEqual(existing);
 
-    expect(mocks.postMediaCount).not.toHaveBeenCalled();
+    expect(mocks.postMediaFindMany).not.toHaveBeenCalled();
     expect(mocks.postMediaCreate).not.toHaveBeenCalled();
     expect(mocks.uploadIntentUpdate).toHaveBeenCalledWith({
       where: { objectKey },
