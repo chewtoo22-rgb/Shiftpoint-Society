@@ -21,7 +21,7 @@ const postSchema = z.object({
 
 const commentSchema = z.object({
   postId: z.string().trim().min(1),
-  body: z.string().trim().min(1, "Write a comment first.").max(600),
+  body: z.string().trim().min(1, "Write a comment first.").max(600, "Keep comments to 600 characters."),
 });
 
 const reactionSchema = z.object({
@@ -43,6 +43,15 @@ const postMediaCompletionSchema = z.object({
   postId: z.string().trim().min(1),
   completionToken: z.string().trim().min(1),
 });
+
+export type FeedCommentActionState = {
+  error: string | null;
+  success?: boolean;
+  value?: string;
+  fieldErrors?: {
+    body?: string[];
+  };
+};
 
 export async function createFeedPost(formData: FormData) {
   const member = await getCurrentMember();
@@ -167,7 +176,6 @@ export async function completeFeedPostMediaUpload(input: {
 }
 
 export async function addFeedComment(formData: FormData) {
-  const member = await getCurrentMember();
   const parsed = commentSchema.safeParse({
     postId: formData.get("postId"),
     body: formData.get("body"),
@@ -177,6 +185,7 @@ export async function addFeedComment(formData: FormData) {
     throw new Error(parsed.error.issues[0]?.message ?? "Invalid comment");
   }
 
+  const member = await getCurrentMember();
   const post = await db.post.findUnique({
     where: { id: parsed.data.postId },
     select: { id: true },
@@ -194,6 +203,40 @@ export async function addFeedComment(formData: FormData) {
 
   revalidatePath("/feed");
   revalidatePath(`/feed/${post.id}`);
+}
+
+export async function submitFeedComment(
+  _previousState: FeedCommentActionState,
+  formData: FormData,
+): Promise<FeedCommentActionState> {
+  const rawBody = String(formData.get("body") ?? "");
+  const parsed = commentSchema.safeParse({
+    postId: formData.get("postId"),
+    body: rawBody,
+  });
+
+  if (!parsed.success) {
+    return {
+      error: "Fix the highlighted comment field and try again.",
+      value: rawBody.slice(0, 600),
+      fieldErrors: {
+        body: parsed.error.flatten().fieldErrors.body,
+      },
+    };
+  }
+
+  try {
+    await addFeedComment(formData);
+    return { error: null, success: true };
+  } catch (error) {
+    if (error instanceof Error && error.message === "Post not found") {
+      return {
+        error: "This post is no longer available. Refresh the feed before replying.",
+        value: parsed.data.body,
+      };
+    }
+    throw error;
+  }
 }
 
 export async function toggleFeedReaction(formData: FormData) {
