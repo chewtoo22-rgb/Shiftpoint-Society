@@ -98,8 +98,15 @@ export default async function GaragePage({ searchParams }: GaragePageProps) {
       <section className="garageColumns">
         <div>
           <div className="sectionKicker">CURRENT SETUP</div>
+          {garage.partsPreviewTruncated && (
+            <p className="garageSwitcherNote" role="status">
+              Showing the {garage.mods.length} most recent of {garage.partsLogged} logged parts.
+            </p>
+          )}
           <div className="modList">
-            {garage.mods.map((mod) => (
+            {garage.mods.length === 0 ? (
+              <p className="garageSwitcherNote">No parts logged yet. Add the first component above.</p>
+            ) : garage.mods.map((mod) => (
               <article key={`${mod.type}-${mod.name}`} className="modRow">
                 <span>{mod.type}</span><strong>{mod.name}</strong><b>{mod.delta}</b>
               </article>
@@ -108,8 +115,15 @@ export default async function GaragePage({ searchParams }: GaragePageProps) {
         </div>
         <div>
           <div className="sectionKicker">BUILD LOG</div>
+          {garage.buildLogPreviewTruncated && (
+            <p className="garageSwitcherNote" role="status">
+              Showing the {garage.timeline.length} most recent of {garage.buildLogTotal} build updates.
+            </p>
+          )}
           <div className="timeline">
-            {garage.timeline.map((item) => (
+            {garage.timeline.length === 0 ? (
+              <p className="garageSwitcherNote">No build updates yet. Log the first milestone above.</p>
+            ) : garage.timeline.map((item) => (
               <article key={item.date + item.title}>
                 <time>{item.date}</time><div><strong>{item.title}</strong><p>{item.detail}</p></div>
               </article>
