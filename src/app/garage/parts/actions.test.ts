@@ -144,29 +144,54 @@ describe("installed parts ledger boundary", () => {
     );
   });
 
-  it("returns recoverable bounded validation state before ownership lookup or persistence", async () => {
+  it("returns recoverable field-specific validation state before ownership lookup or persistence", async () => {
     const formData = new FormData();
     formData.set("carId", "car-1");
     formData.set("brand", "B".repeat(100));
     formData.set("name", "x");
     formData.set("category", "x");
+    formData.set("partNumber", "P".repeat(100));
     formData.set("notes", "n".repeat(600));
 
     const state = await addInstalledPart(initialState, formData);
 
-    expect(state.error).toMatch(/check the part details/i);
+    expect(state.error).toMatch(/fix the highlighted fields/i);
     expect(state.success).toBeUndefined();
     expect(state.values).toEqual({
       brand: "B".repeat(80),
       name: "x",
       category: "x",
-      partNumber: "",
+      partNumber: "P".repeat(80),
       notes: "n".repeat(500),
     });
+    expect(state.fieldErrors?.brand?.length).toBeGreaterThan(0);
+    expect(state.fieldErrors?.name?.length).toBeGreaterThan(0);
+    expect(state.fieldErrors?.category?.length).toBeGreaterThan(0);
+    expect(state.fieldErrors?.partNumber?.length).toBeGreaterThan(0);
+    expect(state.fieldErrors?.notes?.length).toBeGreaterThan(0);
     expect(mocks.requireOwnedCar).not.toHaveBeenCalled();
     expect(mocks.partFindFirst).not.toHaveBeenCalled();
     expect(mocks.partCreate).not.toHaveBeenCalled();
     expect(mocks.carPartUpsert).not.toHaveBeenCalled();
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("does not report valid optional ledger fields as invalid when required fields fail", async () => {
+    const formData = new FormData();
+    formData.set("carId", "car-1");
+    formData.set("brand", "Bilstein");
+    formData.set("name", "x");
+    formData.set("category", "x");
+    formData.set("partNumber", "24-143981");
+    formData.set("notes", "Rear dampers");
+
+    const state = await addInstalledPart(initialState, formData);
+
+    expect(state.fieldErrors?.name?.length).toBeGreaterThan(0);
+    expect(state.fieldErrors?.category?.length).toBeGreaterThan(0);
+    expect(state.fieldErrors?.brand).toBeUndefined();
+    expect(state.fieldErrors?.partNumber).toBeUndefined();
+    expect(state.fieldErrors?.notes).toBeUndefined();
+    expect(mocks.requireOwnedCar).not.toHaveBeenCalled();
   });
 });
