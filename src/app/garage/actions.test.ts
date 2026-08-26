@@ -51,6 +51,20 @@ describe("build update ownership and integrity boundary", () => {
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });
 
+  it("rejects a whitespace-only car id before ownership lookup or persistence", async () => {
+    const formData = new FormData();
+    formData.set("carId", "   ");
+    formData.set("title", "Dyno baseline");
+    formData.set("body", "Established a clean baseline before the next round of changes.");
+
+    const result = await addBuildUpdate(initialState, formData);
+
+    expect(result.error).toBe("Check the build update. Fix the highlighted fields and try again.");
+    expect(mocks.requireOwnedCar).not.toHaveBeenCalled();
+    expect(mocks.buildEntryCreate).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
   it("normalizes update text and writes only to the owned car", async () => {
     const formData = new FormData();
     formData.set("carId", "car-1");
