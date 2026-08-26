@@ -1,10 +1,28 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  userFindUnique: vi.fn(),
+}));
+
+vi.mock("@/lib/db", () => ({
+  db: {
+    user: {
+      findUnique: mocks.userFindUnique,
+    },
+  },
+}));
+
 import {
   buildPublicMemberLookup,
   buildValidatedPublicMemberLookup,
+  getPublicMemberProfile,
   PUBLIC_MEMBER_GARAGE_MAX_CARS,
   publicMemberProfileSelect,
 } from "./member-profile-repository";
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 describe("buildPublicMemberLookup", () => {
   it("constrains the public profile lookup to the requested handle", () => {
@@ -43,6 +61,33 @@ describe("buildValidatedPublicMemberLookup", () => {
     expect(buildValidatedPublicMemberLookup("ab")).toBeNull();
     expect(buildValidatedPublicMemberLookup("bad handle")).toBeNull();
     expect(buildValidatedPublicMemberLookup("bad/handle")).toBeNull();
+  });
+});
+
+describe("getPublicMemberProfile", () => {
+  it("keeps malformed public handles out of the database entirely", async () => {
+    await expect(getPublicMemberProfile("bad/handle")).resolves.toBeNull();
+    expect(mocks.userFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("uses the validated canonical handle and narrow public projection", async () => {
+    const publicMember = {
+      handle: "boosted_svt",
+      displayName: "Boosted SVT",
+      bio: null,
+      avatarUrl: null,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      _count: { cars: 0 },
+      cars: [],
+    };
+    mocks.userFindUnique.mockResolvedValue(publicMember);
+
+    await expect(getPublicMemberProfile("  Boosted_SVT  ")).resolves.toBe(publicMember);
+    expect(mocks.userFindUnique).toHaveBeenCalledTimes(1);
+    expect(mocks.userFindUnique).toHaveBeenCalledWith({
+      where: { handle: "boosted_svt" },
+      select: publicMemberProfileSelect,
+    });
   });
 });
 
