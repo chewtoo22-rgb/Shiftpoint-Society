@@ -5,7 +5,7 @@ import "./globals.css";
 import "./mobile-nav.css";
 import { DesktopNav } from "./desktop-nav";
 import { MobileNav } from "./mobile-nav";
-import { getOptionalCurrentMember } from "@/lib/current-member";
+import { getOptionalCurrentMemberId } from "@/lib/current-member";
 import { getUnreadActivityCount } from "@/lib/activity-repository";
 import { getActivitySeenCookieName, parseActivitySeenAt } from "@/lib/activity-seen";
 
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const [member, cookieStore] = await Promise.all([
-    getOptionalCurrentMember(),
+    getOptionalCurrentMemberId(),
     cookies(),
   ]);
 
