@@ -1,0 +1,36 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { isPrimaryNavigationActive, primaryNavigation } from "../lib/navigation";
+
+export function MobileNav({ unreadActivity }: { unreadActivity: number }) {
+  const pathname = usePathname();
+
+  return (
+    <nav className="mobileNav" aria-label="Mobile navigation">
+      {primaryNavigation.map(({ label, href, mobileKicker }) => {
+        const active = isPrimaryNavigationActive(pathname, href);
+
+        return (
+          <Link
+            key={href}
+            href={href}
+            className={active ? "mobileNavActive" : undefined}
+            aria-current={active ? "page" : undefined}
+          >
+            <span className="mobileNavKicker">{mobileKicker}</span>
+            <span className="mobileNavLabel">
+              {label}
+              {href === "/activity" && unreadActivity > 0 ? (
+                <span className="navBadge" aria-label={`${unreadActivity} unread activity items`}>
+                  {unreadActivity > 99 ? "99+" : unreadActivity}
+                </span>
+              ) : null}
+            </span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}

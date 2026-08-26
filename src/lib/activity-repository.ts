@@ -1,0 +1,94 @@
+import { db } from "./db";
+
+export const MEMBER_ACTIVITY_DEFAULT_LIMIT = 40;
+export const MEMBER_ACTIVITY_MAX_LIMIT = 100;
+
+export function normalizeMemberActivityLimit(limit = MEMBER_ACTIVITY_DEFAULT_LIMIT) {
+  if (!Number.isFinite(limit)) return MEMBER_ACTIVITY_DEFAULT_LIMIT;
+
+  const normalized = Math.trunc(limit);
+  if (normalized < 1) return 1;
+
+  return Math.min(normalized, MEMBER_ACTIVITY_MAX_LIMIT);
+}
+
+export async function getUnreadActivityCount(memberId: string, seenAt: Date | null) {
+  const createdAt = seenAt ? { gt: seenAt } : undefined;
+  const [comments, reactions] = await Promise.all([
+    db.comment.count({
+      where: {
+        authorId: { not: memberId },
+        post: { authorId: memberId },
+        createdAt,
+      },
+    }),
+    db.reaction.count({
+      where: {
+        userId: { not: memberId },
+        post: { authorId: memberId },
+        createdAt,
+      },
+    }),
+  ]);
+
+  return comments + reactions;
+}
+
+export async function getMemberActivity(memberId: string, limit = MEMBER_ACTIVITY_DEFAULT_LIMIT) {
+  const normalizedLimit = normalizeMemberActivityLimit(limit);
+  const [comments, reactions] = await Promise.all([
+    db.comment.findMany({
+      where: {
+        authorId: { not: memberId },
+        post: { authorId: memberId },
+      },
+      take: normalizedLimit,
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        body: true,
+        createdAt: true,
+        author: { select: { handle: true, displayName: true } },
+        post: { select: { id: true, body: true } },
+      },
+    }),
+    db.reaction.findMany({
+      where: {
+        userId: { not: memberId },
+        post: { authorId: memberId },
+      },
+      take: normalizedLimit,
+      orderBy: { createdAt: "desc" },
+      select: {
+        postId: true,
+        type: true,
+        createdAt: true,
+        user: { select: { handle: true, displayName: true } },
+        post: { select: { body: true } },
+      },
+    }),
+  ]);
+
+  return [
+    ...comments.map((comment) => ({
+      id: `comment-${comment.id}`,
+      kind: "COMMENT" as const,
+      createdAt: comment.createdAt,
+      actor: comment.author,
+      postId: comment.post.id,
+      postBody: comment.post.body,
+      detail: comment.body,
+    })),
+    ...reactions.map((reaction) => ({
+      id: `reaction-${reaction.postId}-${reaction.type}-${reaction.createdAt.getTime()}`,
+      kind: "REACTION" as const,
+      createdAt: reaction.createdAt,
+      actor: reaction.user,
+      postId: reaction.postId,
+      postBody: reaction.post.body,
+      detail: reaction.type,
+    })),
+  ]
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, normalizedLimit);
+}

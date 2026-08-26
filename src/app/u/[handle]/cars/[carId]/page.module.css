@@ -1,0 +1,25 @@
+.buildMilestone {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid transparent;
+  border-left: 3px solid transparent;
+  scroll-margin-top: 96px;
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.buildMilestone:target {
+  border-color: var(--line);
+  border-left-color: var(--hot);
+  background: linear-gradient(90deg, rgba(255, 77, 24, 0.12), rgba(255, 77, 24, 0.02));
+  box-shadow: 0 0 0 1px rgba(255, 77, 24, 0.12), 0 14px 36px rgba(0, 0, 0, 0.28);
+}
+
+.buildMilestone:target::before {
+  content: "SHARED MILESTONE";
+  display: block;
+  margin-bottom: 10px;
+  color: var(--hot);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}

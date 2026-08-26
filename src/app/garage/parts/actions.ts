@@ -1,0 +1,136 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { db } from "@/lib/db";
+import { requireOwnedCar } from "@/lib/current-member";
+
+const installedPartSchema = z.object({
+  carId: z.string().min(1),
+  brand: z.string().trim().min(1).max(80),
+  name: z.string().trim().min(2).max(140),
+  category: z.string().trim().min(2).max(80),
+  partNumber: z.string().trim().max(80).optional(),
+  notes: z.string().trim().max(500).optional(),
+});
+
+export type InstalledPartFormValues = {
+  brand: string;
+  name: string;
+  category: string;
+  partNumber: string;
+  notes: string;
+};
+
+export type InstalledPartFieldErrors = Partial<Record<keyof InstalledPartFormValues, string[]>>;
+
+export type InstalledPartActionState = {
+  error: string | null;
+  success?: boolean;
+  values?: InstalledPartFormValues;
+  fieldErrors?: InstalledPartFieldErrors;
+};
+
+const INVALID_INSTALLED_PART_MESSAGE =
+  "Check the part details. Fix the highlighted fields and try again.";
+
+const valueLimits: Record<keyof InstalledPartFormValues, number> = {
+  brand: 80,
+  name: 140,
+  category: 80,
+  partNumber: 80,
+  notes: 500,
+};
+
+function submittedValues(formData: FormData): InstalledPartFormValues {
+  const read = (field: keyof InstalledPartFormValues) => {
+    const value = formData.get(field);
+    return typeof value === "string" ? value.slice(0, valueLimits[field]) : "";
+  };
+
+  return {
+    brand: read("brand"),
+    name: read("name"),
+    category: read("category"),
+    partNumber: read("partNumber"),
+    notes: read("notes"),
+  };
+}
+
+function validationErrors(error: z.ZodError): InstalledPartFieldErrors {
+  const errors: InstalledPartFieldErrors = {};
+
+  for (const issue of error.issues) {
+    const field = issue.path[0];
+    if (typeof field !== "string" || !(field in valueLimits)) continue;
+
+    const key = field as keyof InstalledPartFormValues;
+    const messages = errors[key] ?? [];
+    messages.push(issue.message);
+    errors[key] = messages;
+  }
+
+  return errors;
+}
+
+export async function addInstalledPart(
+  _previousState: InstalledPartActionState,
+  formData: FormData,
+): Promise<InstalledPartActionState> {
+  const parsed = installedPartSchema.safeParse({
+    carId: formData.get("carId"),
+    brand: formData.get("brand"),
+    name: formData.get("name"),
+    category: formData.get("category"),
+    partNumber: formData.get("partNumber") || undefined,
+    notes: formData.get("notes") || undefined,
+  });
+
+  if (!parsed.success) {
+    return {
+      error: INVALID_INSTALLED_PART_MESSAGE,
+      values: submittedValues(formData),
+      fieldErrors: validationErrors(parsed.error),
+    };
+  }
+
+  const input = parsed.data;
+  const { member } = await requireOwnedCar(input.carId);
+
+  let part = await db.part.findFirst({
+    where: {
+      brand: { equals: input.brand, mode: "insensitive" },
+      name: { equals: input.name, mode: "insensitive" },
+      category: { equals: input.category, mode: "insensitive" },
+      partNumber: input.partNumber
+        ? { equals: input.partNumber, mode: "insensitive" }
+        : null,
+    },
+  });
+
+  part ??= await db.part.create({
+    data: {
+      brand: input.brand,
+      name: input.name,
+      category: input.category,
+      partNumber: input.partNumber || null,
+    },
+  });
+
+  await db.carPart.upsert({
+    where: { carId_partId: { carId: input.carId, partId: part.id } },
+    update: { notes: input.notes || null, installedAt: new Date() },
+    create: {
+      carId: input.carId,
+      partId: part.id,
+      notes: input.notes || null,
+      installedAt: new Date(),
+    },
+  });
+
+  revalidatePath("/garage");
+  revalidatePath(`/u/${member.handle}`);
+  revalidatePath(`/u/${member.handle}/cars/${input.carId}`);
+
+  return { error: null, success: true };
+}
