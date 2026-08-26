@@ -155,7 +155,7 @@ describe("current member identity boundaries", () => {
     expect(mocks.userCreate).not.toHaveBeenCalled();
   });
 
-  it("scopes owned-car lookup to the authenticated member id", async () => {
+  it("scopes owned-car lookup to the authenticated member id with a minimal projection", async () => {
     const member = {
       id: "member-7",
       authSubject: "provider:777",
@@ -168,15 +168,15 @@ describe("current member identity boundaries", () => {
     });
     mocks.userFindUnique.mockResolvedValue(member);
     mocks.userUpdate.mockResolvedValue(member);
-    mocks.carFindFirst.mockResolvedValue({ id: "car-9", ownerId: "member-7" });
+    mocks.carFindFirst.mockResolvedValue({ id: "car-9" });
 
     await expect(requireOwnedCar("car-9")).resolves.toEqual({
       member,
-      car: { id: "car-9", ownerId: "member-7" },
+      car: { id: "car-9" },
     });
     expect(mocks.carFindFirst).toHaveBeenCalledWith({
       where: { id: "car-9", ownerId: "member-7" },
-      select: { id: true, ownerId: true },
+      select: { id: true },
     });
   });
 
@@ -200,7 +200,7 @@ describe("current member identity boundaries", () => {
     );
     expect(mocks.carFindFirst).toHaveBeenCalledWith({
       where: { id: "someone-elses-car", ownerId: "member-8" },
-      select: { id: true, ownerId: true },
+      select: { id: true },
     });
   });
 });
