@@ -214,6 +214,11 @@ describe("post media completion persistence boundary", () => {
       id: "media-existing",
       postId: "post-1",
       objectKey,
+      url: mediaUrl,
+      type: "IMAGE",
+      mimeType: media.mimeType,
+      sizeBytes: media.sizeBytes,
+      originalName: media.name,
       sortOrder: 1,
     };
     mocks.postMediaFindUnique.mockResolvedValue(existing);
