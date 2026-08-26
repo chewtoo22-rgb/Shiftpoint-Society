@@ -121,14 +121,23 @@ function isSerializableWriteConflict(error: unknown) {
 }
 
 function firstFreeMediaSlot(sortOrders: number[]) {
-  const occupied = new Set(
-    sortOrders.filter(
-      (sortOrder) =>
-        Number.isInteger(sortOrder) &&
-        sortOrder >= 0 &&
-        sortOrder < MAX_MEDIA_PER_POST,
-    ),
-  );
+  const occupied = new Set<number>();
+
+  for (const sortOrder of sortOrders) {
+    if (
+      !Number.isInteger(sortOrder) ||
+      sortOrder < 0 ||
+      sortOrder >= MAX_MEDIA_PER_POST
+    ) {
+      throw new Error("Post media slot state is invalid.");
+    }
+
+    if (occupied.has(sortOrder)) {
+      throw new Error("Post media slot state contains duplicate positions.");
+    }
+
+    occupied.add(sortOrder);
+  }
 
   for (let slot = 0; slot < MAX_MEDIA_PER_POST; slot += 1) {
     if (!occupied.has(slot)) {
@@ -150,11 +159,13 @@ function firstFreeMediaSlot(sortOrders: number[]) {
  * a stale/replaced intent cannot be marked attached after the outer admission
  * check. Slot selection uses the first free logical slot rather than the
  * attachment count so a removed middle attachment cannot make a later upload
- * collide with an existing sortOrder. PostgreSQL/Prisma may surface a P2034
- * serialization conflict under contention, so retry the whole bounded
- * transaction a small number of times. The matching upload intent is marked
- * attached in the same transaction as the media record so cleanup cannot race
- * a successful attachment.
+ * collide with an existing sortOrder. Existing slot state must itself be valid
+ * and unique; corrupt or duplicate persisted positions fail closed instead of
+ * being silently ignored while a new attachment is created. PostgreSQL/Prisma
+ * may surface a P2034 serialization conflict under contention, so retry the
+ * whole bounded transaction a small number of times. The matching upload
+ * intent is marked attached in the same transaction as the media record so
+ * cleanup cannot race a successful attachment.
  */
 export async function persistPostMediaCompletion(input: {
   postId: string;
