@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 
 import { db } from "./db";
-import { normalizeSocietyHandle } from "./society-handle";
+import { normalizeSocietyHandle, validateSocietyHandle } from "./society-handle";
 
 export const PUBLIC_MEMBER_GARAGE_MAX_CARS = 50;
 
@@ -47,9 +47,20 @@ export function buildPublicMemberLookup(handle: string) {
   return { handle: normalizeSocietyHandle(handle) };
 }
 
+export function buildValidatedPublicMemberLookup(handle: string) {
+  try {
+    return { handle: validateSocietyHandle(handle) };
+  } catch {
+    return null;
+  }
+}
+
 export async function getPublicMemberProfile(handle: string) {
+  const where = buildValidatedPublicMemberLookup(handle);
+  if (!where) return null;
+
   const member = await db.user.findUnique({
-    where: buildPublicMemberLookup(handle),
+    where,
     select: publicMemberProfileSelect,
   });
 
