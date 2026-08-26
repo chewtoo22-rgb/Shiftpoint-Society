@@ -6,6 +6,7 @@ import {
   COMMUNITY_FEED_DEFAULT_LIMIT,
   COMMUNITY_FEED_MAX_LIMIT,
   COMMUNITY_FEED_ORDER,
+  COMMUNITY_POST_MEDIA_MAX,
   buildCommunityFeedPostWhere,
   normalizeCommunityFeedLimit,
 } from "./feed-repository";
@@ -42,6 +43,12 @@ describe("normalizeCommunityFeedLimit", () => {
     expect(normalizeCommunityFeedLimit(12.9)).toBe(12);
     expect(normalizeCommunityFeedLimit(Number.NaN)).toBe(COMMUNITY_FEED_DEFAULT_LIMIT);
     expect(normalizeCommunityFeedLimit(Number.POSITIVE_INFINITY)).toBe(COMMUNITY_FEED_DEFAULT_LIMIT);
+  });
+});
+
+describe("community public projection bounds", () => {
+  it("never exposes more media rows than the supported post attachment limit", () => {
+    expect(COMMUNITY_POST_MEDIA_MAX).toBe(4);
   });
 });
 
