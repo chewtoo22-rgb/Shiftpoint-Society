@@ -93,7 +93,7 @@ export async function requireOwnedCar(carId: string) {
   const member = await getCurrentMember();
   const car = await db.car.findFirst({
     where: { id: carId, ownerId: member.id },
-    select: { id: true, ownerId: true },
+    select: { id: true },
   });
 
   if (!car) {
