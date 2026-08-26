@@ -29,6 +29,26 @@ export async function getOptionalCurrentMember() {
 }
 
 /**
+ * Narrow optional identity projection for shared shell concerns that only need
+ * a stable member identifier. Keeping this separate prevents layout-level
+ * reads from pulling the full member row into memory merely to calculate
+ * member-scoped chrome such as unread activity counts.
+ */
+export async function getOptionalCurrentMemberId() {
+  const session = await auth();
+  const sessionUser = session?.user as SessionMember | undefined;
+
+  if (!sessionUser?.authSubject) {
+    return null;
+  }
+
+  return db.user.findUnique({
+    where: { authSubject: sessionUser.authSubject },
+    select: { id: true },
+  });
+}
+
+/**
  * Central identity boundary for every owner-scoped garage read/write.
  * Never accept an owner id from form data.
  *
