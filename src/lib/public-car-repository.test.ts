@@ -79,6 +79,22 @@ describe("publicCarBuildSelect", () => {
     expect(publicCarBuildSelect.posts.select).not.toHaveProperty("carId");
   });
 
+  it("keeps nested public part data on an explicit non-commerce allowlist", () => {
+    expect(publicCarBuildSelect.carParts.select.part.select).toEqual({
+      id: true,
+      brand: true,
+      name: true,
+      category: true,
+      partNumber: true,
+    });
+
+    const publicPartSelect = publicCarBuildSelect.carParts.select.part.select;
+    expect(publicPartSelect).not.toHaveProperty("productUrl");
+    expect(publicPartSelect).not.toHaveProperty("deals");
+    expect(publicPartSelect).not.toHaveProperty("carParts");
+    expect(publicPartSelect).not.toHaveProperty("buildEntries");
+  });
+
   it("orders related public build data deterministically when timestamps tie", () => {
     expect(publicCarBuildSelect.buildEntries.orderBy).toEqual([
       { occurredAt: "desc" },
