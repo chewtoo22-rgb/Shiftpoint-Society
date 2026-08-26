@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({
   userFindUnique: vi.fn(),
 }));
 
-vi.mock("@/lib/db", () => ({
+vi.mock("./db", () => ({
   db: {
     user: {
       findUnique: mocks.userFindUnique,
