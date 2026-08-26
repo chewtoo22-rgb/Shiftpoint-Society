@@ -4,8 +4,11 @@ import { runPostMediaOrphanDryRunReport } from "@/lib/post-media-orphan-report";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const NO_STORE_HEADERS = {
-  "Cache-Control": "no-store",
+const PRIVATE_NO_STORE_HEADERS = {
+  "Cache-Control": "private, no-store, max-age=0",
+  Pragma: "no-cache",
+  Expires: "0",
+  "X-Content-Type-Options": "nosniff",
 };
 
 /**
@@ -23,7 +26,7 @@ export async function POST(request: Request) {
   if (!authorized) {
     return Response.json(
       { ok: false, error: "unauthorized" },
-      { status: 401, headers: NO_STORE_HEADERS },
+      { status: 401, headers: PRIVATE_NO_STORE_HEADERS },
     );
   }
 
@@ -31,6 +34,6 @@ export async function POST(request: Request) {
 
   return Response.json(report, {
     status: report.ok ? 200 : 503,
-    headers: NO_STORE_HEADERS,
+    headers: PRIVATE_NO_STORE_HEADERS,
   });
 }
