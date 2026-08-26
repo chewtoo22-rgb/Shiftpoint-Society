@@ -164,6 +164,35 @@ describe("post media completion persistence boundary", () => {
     });
   });
 
+  it("fails closed when persisted media slots contain duplicate logical positions", async () => {
+    mocks.postMediaFindMany.mockResolvedValue([
+      { sortOrder: 0 },
+      { sortOrder: 2 },
+      { sortOrder: 2 },
+    ]);
+
+    await expect(
+      persistPostMediaCompletion({ postId: "post-1", objectKey, mediaUrl, media }),
+    ).rejects.toThrow("Post media slot state contains duplicate positions.");
+
+    expect(mocks.postMediaCreate).not.toHaveBeenCalled();
+    expect(mocks.uploadIntentUpdate).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when persisted media slots fall outside the supported range", async () => {
+    mocks.postMediaFindMany.mockResolvedValue([
+      { sortOrder: 0 },
+      { sortOrder: 4 },
+    ]);
+
+    await expect(
+      persistPostMediaCompletion({ postId: "post-1", objectKey, mediaUrl, media }),
+    ).rejects.toThrow("Post media slot state is invalid.");
+
+    expect(mocks.postMediaCreate).not.toHaveBeenCalled();
+    expect(mocks.uploadIntentUpdate).not.toHaveBeenCalled();
+  });
+
   it("fails before creating media when all four attachment slots are occupied", async () => {
     mocks.postMediaFindMany.mockResolvedValue([
       { sortOrder: 0 },
