@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPublicMemberLookup,
+  buildValidatedPublicMemberLookup,
   PUBLIC_MEMBER_GARAGE_MAX_CARS,
   publicMemberProfileSelect,
 } from "./member-profile-repository";
@@ -28,6 +29,20 @@ describe("buildPublicMemberLookup", () => {
     expect(lookup).not.toHaveProperty("id");
     expect(lookup).not.toHaveProperty("ownerId");
     expect(lookup).not.toHaveProperty("authorId");
+  });
+});
+
+describe("buildValidatedPublicMemberLookup", () => {
+  it("canonicalizes valid public handles", () => {
+    expect(buildValidatedPublicMemberLookup("  Boosted_SVT  ")).toEqual({
+      handle: "boosted_svt",
+    });
+  });
+
+  it("fails closed for malformed public handles before a database lookup", () => {
+    expect(buildValidatedPublicMemberLookup("ab")).toBeNull();
+    expect(buildValidatedPublicMemberLookup("bad handle")).toBeNull();
+    expect(buildValidatedPublicMemberLookup("bad/handle")).toBeNull();
   });
 });
 
