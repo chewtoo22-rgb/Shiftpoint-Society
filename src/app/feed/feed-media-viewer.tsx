@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import styles from "./feed-media-viewer.module.css";
 
 type FeedMediaViewerProps = {
@@ -18,6 +18,7 @@ type GalleryItem = {
 const SWIPE_THRESHOLD_PX = 48;
 
 export function FeedMediaViewer({ src, alt, positionLabel }: FeedMediaViewerProps) {
+  const dialogId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const touchStartXRef = useRef<number | null>(null);
@@ -125,6 +126,9 @@ export function FeedMediaViewer({ src, alt, positionLabel }: FeedMediaViewerProp
         className={styles.trigger}
         onClick={openViewer}
         aria-label={`Open ${alt} fullscreen`}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-controls={dialogId}
         data-feed-media-trigger
         data-feed-media-src={src}
         data-feed-media-alt={alt}
@@ -136,6 +140,7 @@ export function FeedMediaViewer({ src, alt, positionLabel }: FeedMediaViewerProp
 
       {open && (
         <div
+          id={dialogId}
           ref={dialogRef}
           className={styles.backdrop}
           role="dialog"
