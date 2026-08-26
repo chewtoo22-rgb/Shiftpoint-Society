@@ -27,6 +27,7 @@ vi.mock("@/lib/db", () => ({
 import {
   getCurrentMember,
   getOptionalCurrentMember,
+  getOptionalCurrentMemberId,
   requireOwnedCar,
 } from "./current-member";
 
@@ -43,6 +44,26 @@ describe("current member identity boundaries", () => {
 
     await expect(getOptionalCurrentMember()).resolves.toBeNull();
     expect(mocks.userFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("keeps anonymous narrow optional-member reads out of the database", async () => {
+    mocks.auth.mockResolvedValue(null);
+
+    await expect(getOptionalCurrentMemberId()).resolves.toBeNull();
+    expect(mocks.userFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("projects only the member id for shared-shell optional identity reads", async () => {
+    mocks.auth.mockResolvedValue({
+      user: { authSubject: "provider:shell" },
+    });
+    mocks.userFindUnique.mockResolvedValue({ id: "member-shell" });
+
+    await expect(getOptionalCurrentMemberId()).resolves.toEqual({ id: "member-shell" });
+    expect(mocks.userFindUnique).toHaveBeenCalledWith({
+      where: { authSubject: "provider:shell" },
+      select: { id: true },
+    });
   });
 
   it("requires both an auth subject and provider handle before bootstrapping identity", async () => {
