@@ -27,6 +27,13 @@ function request(authorization?: string) {
   });
 }
 
+function expectPrivateNoStore(response: Response) {
+  expect(response.headers.get("cache-control")).toBe("private, no-store, max-age=0");
+  expect(response.headers.get("pragma")).toBe("no-cache");
+  expect(response.headers.get("expires")).toBe("0");
+  expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+}
+
 describe("POST /api/internal/post-media/orphans/dry-run", () => {
   const originalToken = process.env.POST_MEDIA_ORPHAN_REPORT_TOKEN;
 
@@ -54,7 +61,7 @@ describe("POST /api/internal/post-media/orphans/dry-run", () => {
     );
     expect(runPostMediaOrphanDryRunReport).not.toHaveBeenCalled();
     expect(response.status).toBe(401);
-    expect(response.headers.get("cache-control")).toBe("no-store");
+    expectPrivateNoStore(response);
     await expect(response.json()).resolves.toEqual({ ok: false, error: "unauthorized" });
   });
 
@@ -70,7 +77,7 @@ describe("POST /api/internal/post-media/orphans/dry-run", () => {
 
     expect(runPostMediaOrphanDryRunReport).toHaveBeenCalledTimes(1);
     expect(response.status).toBe(200);
-    expect(response.headers.get("cache-control")).toBe("no-store");
+    expectPrivateNoStore(response);
     await expect(response.json()).resolves.toEqual({
       ok: true,
       candidates: 2,
@@ -78,7 +85,7 @@ describe("POST /api/internal/post-media/orphans/dry-run", () => {
     });
   });
 
-  it("preserves fail-closed no-store behavior when reporting is unavailable", async () => {
+  it("preserves fail-closed private no-store behavior when reporting is unavailable", async () => {
     authorizePostMediaOrphanOperator.mockReturnValue(true);
     runPostMediaOrphanDryRunReport.mockResolvedValue({
       ok: false,
@@ -88,7 +95,7 @@ describe("POST /api/internal/post-media/orphans/dry-run", () => {
     const response = await POST(request("Bearer operator-secret"));
 
     expect(response.status).toBe(503);
-    expect(response.headers.get("cache-control")).toBe("no-store");
+    expectPrivateNoStore(response);
     await expect(response.json()).resolves.toEqual({
       ok: false,
       error: "storage_unavailable",
