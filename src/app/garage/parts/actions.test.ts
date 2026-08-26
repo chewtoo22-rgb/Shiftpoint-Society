@@ -78,6 +78,7 @@ describe("installed parts ledger boundary", () => {
       where: {
         brand: { equals: "Ford Performance", mode: "insensitive" },
         name: { equals: "Cold Air Intake", mode: "insensitive" },
+        category: { equals: "Intake", mode: "insensitive" },
         partNumber: { equals: "M-9603-SVT", mode: "insensitive" },
       },
     });
@@ -97,7 +98,7 @@ describe("installed parts ledger boundary", () => {
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/u/boosted_svt/cars/car-1");
   });
 
-  it("matches catalog parts without a part number using the same case-insensitive identity", async () => {
+  it("matches catalog parts without a part number using category-scoped case-insensitive identity", async () => {
     const formData = new FormData();
     formData.set("carId", "car-1");
     formData.set("brand", "Bilstein");
@@ -110,10 +111,42 @@ describe("installed parts ledger boundary", () => {
       where: {
         brand: { equals: "Bilstein", mode: "insensitive" },
         name: { equals: "B8 Performance Plus", mode: "insensitive" },
+        category: { equals: "Suspension", mode: "insensitive" },
         partNumber: null,
       },
     });
     expect(mocks.partCreate).not.toHaveBeenCalled();
+  });
+
+  it("keeps category in the shared catalog identity so distinct entries do not collapse", async () => {
+    mocks.partFindFirst.mockResolvedValue(null);
+    mocks.partCreate.mockResolvedValue({ id: "part-brakes" });
+
+    const formData = new FormData();
+    formData.set("carId", "car-1");
+    formData.set("brand", "Acme");
+    formData.set("name", "Street Kit");
+    formData.set("category", "Brakes");
+    formData.set("partNumber", "SK-100");
+
+    await addInstalledPart(initialState, formData);
+
+    expect(mocks.partFindFirst).toHaveBeenCalledWith({
+      where: {
+        brand: { equals: "Acme", mode: "insensitive" },
+        name: { equals: "Street Kit", mode: "insensitive" },
+        category: { equals: "Brakes", mode: "insensitive" },
+        partNumber: { equals: "SK-100", mode: "insensitive" },
+      },
+    });
+    expect(mocks.partCreate).toHaveBeenCalledWith({
+      data: {
+        brand: "Acme",
+        name: "Street Kit",
+        category: "Brakes",
+        partNumber: "SK-100",
+      },
+    });
   });
 
   it("creates a catalog part only after ownership succeeds when no match exists", async () => {
