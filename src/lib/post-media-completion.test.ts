@@ -4,6 +4,12 @@ const mocks = vi.hoisted(() => ({
   getCurrentMember: vi.fn(),
   postFindFirst: vi.fn(),
   uploadIntentFindUnique: vi.fn(),
+  transaction: vi.fn(),
+  txUploadIntentFindUnique: vi.fn(),
+  txUploadIntentUpdate: vi.fn(),
+  txPostMediaFindUnique: vi.fn(),
+  txPostMediaFindMany: vi.fn(),
+  txPostMediaCreate: vi.fn(),
 }));
 
 vi.mock("@/lib/current-member", () => ({
@@ -18,10 +24,14 @@ vi.mock("@/lib/db", () => ({
     postMediaUploadIntent: {
       findUnique: mocks.uploadIntentFindUnique,
     },
+    $transaction: mocks.transaction,
   },
 }));
 
-import { authorizePostMediaCompletion } from "./post-media-completion";
+import {
+  authorizePostMediaCompletion,
+  persistPostMediaCompletion,
+} from "./post-media-completion";
 
 const media = {
   name: "launch.jpg",
@@ -45,12 +55,46 @@ function matchingIntent(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function matchingExistingMedia(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "media-1",
+    postId: "post-1",
+    objectKey,
+    url: mediaUrl,
+    type: "IMAGE",
+    mimeType: "image/jpeg",
+    sizeBytes: 1024,
+    originalName: "launch.jpg",
+    sortOrder: 0,
+    createdAt: new Date("2026-08-26T00:00:00Z"),
+    ...overrides,
+  };
+}
+
 describe("post media completion authorization boundary", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getCurrentMember.mockResolvedValue({ id: "member-1" });
     mocks.postFindFirst.mockResolvedValue({ id: "post-1" });
     mocks.uploadIntentFindUnique.mockResolvedValue(matchingIntent());
+    mocks.txUploadIntentFindUnique.mockResolvedValue(matchingIntent());
+    mocks.txUploadIntentUpdate.mockResolvedValue(matchingIntent());
+    mocks.txPostMediaFindUnique.mockResolvedValue(null);
+    mocks.txPostMediaFindMany.mockResolvedValue([]);
+    mocks.txPostMediaCreate.mockResolvedValue(matchingExistingMedia());
+    mocks.transaction.mockImplementation(async (callback: (tx: unknown) => unknown) =>
+      callback({
+        postMediaUploadIntent: {
+          findUnique: mocks.txUploadIntentFindUnique,
+          update: mocks.txUploadIntentUpdate,
+        },
+        postMedia: {
+          findUnique: mocks.txPostMediaFindUnique,
+          findMany: mocks.txPostMediaFindMany,
+          create: mocks.txPostMediaCreate,
+        },
+      }),
+    );
   });
 
   it("pins the target post to the authenticated member", async () => {
@@ -115,5 +159,32 @@ describe("post media completion authorization boundary", () => {
     await expect(
       authorizePostMediaCompletion({ postId: "post-1", objectKey, mediaUrl, media }),
     ).rejects.toThrow("Uploaded media does not match its authorized upload intent.");
+  });
+
+  it("accepts an idempotent completion only when persisted media still matches authorization", async () => {
+    const existing = matchingExistingMedia();
+    mocks.txPostMediaFindUnique.mockResolvedValue(existing);
+
+    await expect(
+      persistPostMediaCompletion({ postId: "post-1", objectKey, mediaUrl, media }),
+    ).resolves.toEqual(existing);
+
+    expect(mocks.txUploadIntentUpdate).toHaveBeenCalledOnce();
+    expect(mocks.txPostMediaCreate).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when an idempotent completion finds inconsistent persisted metadata", async () => {
+    mocks.txPostMediaFindUnique.mockResolvedValue(
+      matchingExistingMedia({ sizeBytes: 2048 }),
+    );
+
+    await expect(
+      persistPostMediaCompletion({ postId: "post-1", objectKey, mediaUrl, media }),
+    ).rejects.toThrow(
+      "Existing post media does not match its authorized upload intent.",
+    );
+
+    expect(mocks.txUploadIntentUpdate).not.toHaveBeenCalled();
+    expect(mocks.txPostMediaCreate).not.toHaveBeenCalled();
   });
 });
