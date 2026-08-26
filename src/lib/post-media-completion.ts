@@ -56,6 +56,34 @@ function assertUploadIntentMatches(
   }
 }
 
+type ExistingPostMediaSnapshot = {
+  postId: string;
+  url: string;
+  type: "IMAGE" | "VIDEO";
+  mimeType: string;
+  sizeBytes: number;
+  originalName: string | null;
+};
+
+function assertExistingPostMediaMatches(
+  existing: ExistingPostMediaSnapshot,
+  authorized: AuthorizedPostMediaCompletion,
+) {
+  if (existing.postId !== authorized.postId) {
+    throw new Error("Uploaded media object is already attached to another post.");
+  }
+
+  if (
+    existing.url !== authorized.mediaUrl ||
+    existing.type !== authorized.kind ||
+    existing.mimeType !== authorized.mimeType ||
+    existing.sizeBytes !== authorized.sizeBytes ||
+    (existing.originalName ?? "") !== authorized.originalName
+  ) {
+    throw new Error("Existing post media does not match its authorized upload intent.");
+  }
+}
+
 /**
  * Final server-side authorization boundary before uploaded media can be
  * persisted against a post. The current member is resolved from the session,
@@ -151,7 +179,9 @@ function firstFreeMediaSlot(sortOrders: number[]) {
 /**
  * Persists a completed upload only after the full authorization boundary above
  * succeeds. Repeated completion calls for the same storage object are
- * idempotent, while attempts to reuse an object key on a different post fail.
+ * idempotent only when the already-persisted row still matches the signed
+ * upload intent; inconsistent rows fail closed rather than being silently
+ * accepted. Attempts to reuse an object key on a different post also fail.
  *
  * Slot assignment, upload-intent revalidation, and the four-attachment cap are
  * evaluated inside a SERIALIZABLE transaction. Re-reading the upload intent in
@@ -190,11 +220,7 @@ export async function persistPostMediaCompletion(input: {
           });
 
           if (existing) {
-            if (existing.postId !== authorized.postId) {
-              throw new Error(
-                "Uploaded media object is already attached to another post.",
-              );
-            }
+            assertExistingPostMediaMatches(existing, authorized);
 
             await tx.postMediaUploadIntent.update({
               where: { objectKey: authorized.objectKey },
