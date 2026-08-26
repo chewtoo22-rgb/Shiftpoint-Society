@@ -43,9 +43,10 @@ Expected boundary: private garage reads and writes require `carId + authenticate
 3. Open the public build and confirm the new milestone appears immediately.
 4. Add an installed part.
 5. Confirm the private parts ledger updates and the public build reflects the change.
-6. Repeat the ownership-isolation attempt from Member B using Member A's car ID.
+6. Add a second catalog part using the same brand, name, and part number but a different category; confirm it remains a distinct catalog entry instead of collapsing into the first part.
+7. Repeat the ownership-isolation attempt from Member B using Member A's car ID.
 
-Expected boundary: a foreign car ID must fail before build-log or shared-parts persistence is touched.
+Expected boundary: a foreign car ID must fail before build-log or shared-parts persistence is touched, and category-distinct catalog parts must retain separate identities even when their other identifiers match.
 
 ## 4. Society feed interactions
 
@@ -64,11 +65,11 @@ Exercise both an image and a video candidate if the configured test storage supp
 
 1. Choose a normal filename and complete the upload/attach flow.
 2. Confirm progress reaches completion and the media appears on the intended post.
-3. Retry completion and confirm it is idempotent rather than duplicating media.
+3. Retry completion and confirm it is idempotent rather than duplicating media; verify the existing attachment still has the same URL, media type, MIME type, size, original filename, and post association.
 4. Try an overlong filename, path-like filename (`../x.jpg`, `a\\b.jpg`), and a filename containing a bidi/control character; confirm validation fails before storage/persistence.
 5. Attempt to complete an upload against a post owned by another member; confirm it fails closed.
 
-Expected boundary: upload intent, object-key namespace, signed completion grant, authenticated member, and owned post must all agree before persistence.
+Expected boundary: upload intent, object-key namespace, signed completion grant, authenticated member, owned post, and any already-persisted attachment metadata must all agree before persistence or idempotent completion succeeds.
 
 ## 6. Public garage/privacy checks
 
@@ -112,7 +113,7 @@ For every failure, record:
 - console/network error if relevant
 - whether data was written despite the failure
 
-Treat any cross-member write, private-data disclosure, upload ownership bypass, or destructive inconsistency as a release blocker.
+Treat any cross-member write, private-data disclosure, upload ownership bypass, catalog identity collapse, or destructive inconsistency as a release blocker.
 
 ## Ready-to-call-tested criteria
 
