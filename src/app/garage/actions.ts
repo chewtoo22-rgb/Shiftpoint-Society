@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { requireOwnedCar } from "@/lib/current-member";
 
 const buildUpdateSchema = z.object({
-  carId: z.string().min(1),
+  carId: z.string().trim().min(1),
   title: z.string().trim().min(3).max(120),
   body: z.string().trim().min(3).max(4000),
 });
