@@ -4,6 +4,7 @@ import { db } from "./db";
 
 export const COMMUNITY_FEED_DEFAULT_LIMIT = 30;
 export const COMMUNITY_FEED_MAX_LIMIT = 50;
+export const COMMUNITY_POST_MEDIA_MAX = 4;
 
 export const COMMUNITY_FEED_ORDER = [
   { createdAt: "desc" },
@@ -52,6 +53,7 @@ const feedPostInclude = {
     },
   },
   media: {
+    take: COMMUNITY_POST_MEDIA_MAX,
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     select: {
       id: true,
