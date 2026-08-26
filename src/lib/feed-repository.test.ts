@@ -8,6 +8,8 @@ import {
   COMMUNITY_FEED_ORDER,
   COMMUNITY_POST_MEDIA_MAX,
   buildCommunityFeedPostWhere,
+  communityFeedPostDetailInclude,
+  communityFeedPostInclude,
   normalizeCommunityFeedLimit,
 } from "./feed-repository";
 
@@ -49,6 +51,42 @@ describe("normalizeCommunityFeedLimit", () => {
 describe("community public projection bounds", () => {
   it("never exposes more media rows than the supported post attachment limit", () => {
     expect(COMMUNITY_POST_MEDIA_MAX).toBe(4);
+    expect(communityFeedPostInclude.media.take).toBe(COMMUNITY_POST_MEDIA_MAX);
+  });
+
+  it("keeps author identity on an explicit public allowlist", () => {
+    expect(communityFeedPostInclude.author.select).toEqual({
+      handle: true,
+      displayName: true,
+      avatarUrl: true,
+    });
+    expect(communityFeedPostInclude.author.select).not.toHaveProperty("id");
+    expect(communityFeedPostInclude.author.select).not.toHaveProperty("authSubject");
+  });
+
+  it("keeps attached cars free of internal owner fields", () => {
+    expect(communityFeedPostInclude.car.select).not.toHaveProperty("ownerId");
+    expect(communityFeedPostInclude.car.select).not.toHaveProperty("owner");
+    expect(communityFeedPostInclude.car.select).not.toHaveProperty("createdById");
+  });
+
+  it("keeps comment authors on display identity only", () => {
+    expect(communityFeedPostInclude.comments.take).toBe(8);
+    expect(communityFeedPostInclude.comments.select.author.select).toEqual({
+      handle: true,
+      displayName: true,
+    });
+    expect(communityFeedPostInclude.comments.select.author.select).not.toHaveProperty("id");
+    expect(communityFeedPostInclude.comments.select.author.select).not.toHaveProperty("authSubject");
+  });
+
+  it("keeps detail build previews narrow and bounded", () => {
+    const detailCar = communityFeedPostDetailInclude.car.select;
+
+    expect(detailCar.buildEntries.take).toBe(3);
+    expect(detailCar.buildEntries.select).not.toHaveProperty("carId");
+    expect(detailCar).not.toHaveProperty("ownerId");
+    expect(detailCar).not.toHaveProperty("owner");
   });
 });
 
