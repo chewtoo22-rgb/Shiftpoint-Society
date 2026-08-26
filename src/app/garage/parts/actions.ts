@@ -101,6 +101,7 @@ export async function addInstalledPart(
     where: {
       brand: { equals: input.brand, mode: "insensitive" },
       name: { equals: input.name, mode: "insensitive" },
+      category: { equals: input.category, mode: "insensitive" },
       partNumber: input.partNumber
         ? { equals: input.partNumber, mode: "insensitive" }
         : null,
