@@ -34,7 +34,7 @@ export function buildCommunityFeedPostWhere(postId: string): Prisma.PostWhereUni
   return { id: postId };
 }
 
-const feedPostInclude = {
+export const communityFeedPostInclude = {
   author: {
     select: {
       handle: true,
@@ -93,8 +93,8 @@ const feedPostInclude = {
   },
 } satisfies Prisma.PostInclude;
 
-const feedPostDetailInclude = {
-  ...feedPostInclude,
+export const communityFeedPostDetailInclude = {
+  ...communityFeedPostInclude,
   car: {
     select: {
       id: true,
@@ -136,13 +136,13 @@ export async function getCommunityFeed(limit = COMMUNITY_FEED_DEFAULT_LIMIT) {
   return db.post.findMany({
     take: normalizeCommunityFeedLimit(limit),
     orderBy: COMMUNITY_FEED_ORDER,
-    include: feedPostInclude,
+    include: communityFeedPostInclude,
   });
 }
 
 export async function getCommunityFeedPost(postId: string) {
   return db.post.findUnique({
     where: buildCommunityFeedPostWhere(postId),
-    include: feedPostDetailInclude,
+    include: communityFeedPostDetailInclude,
   });
 }
