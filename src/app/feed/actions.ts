@@ -268,14 +268,22 @@ export async function toggleFeedReaction(formData: FormData) {
   const existing = await db.reaction.findUnique({ where: key });
 
   if (existing) {
-    await db.reaction.delete({ where: key });
+    // deleteMany is intentionally idempotent. If two matching requests race
+    // after both observing the same existing reaction, the second delete is a
+    // harmless no-op instead of surfacing a record-not-found failure.
+    await db.reaction.deleteMany({ where: key.postId_userId_type });
   } else {
-    await db.reaction.create({
-      data: {
+    // Upsert closes the corresponding create race: duplicate fast taps can
+    // both observe no row, but only one row is ever persisted and neither
+    // request fails the unique(postId,userId,type) constraint.
+    await db.reaction.upsert({
+      where: key,
+      create: {
         postId: post.id,
         userId: member.id,
         type: parsed.data.type,
       },
+      update: {},
     });
   }
 

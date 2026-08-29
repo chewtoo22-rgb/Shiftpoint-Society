@@ -7,8 +7,8 @@ const mocks = vi.hoisted(() => ({
   postFindUnique: vi.fn(),
   commentCreate: vi.fn(),
   reactionFindUnique: vi.fn(),
-  reactionCreate: vi.fn(),
-  reactionDelete: vi.fn(),
+  reactionUpsert: vi.fn(),
+  reactionDeleteMany: vi.fn(),
   revalidatePath: vi.fn(),
   persistPostMediaCompletion: vi.fn(),
   createPostMediaCompletionGrant: vi.fn(),
@@ -31,8 +31,8 @@ vi.mock("@/lib/db", () => ({
     comment: { create: mocks.commentCreate },
     reaction: {
       findUnique: mocks.reactionFindUnique,
-      create: mocks.reactionCreate,
-      delete: mocks.reactionDelete,
+      upsert: mocks.reactionUpsert,
+      deleteMany: mocks.reactionDeleteMany,
     },
   },
 }));
@@ -68,6 +68,8 @@ describe("feed authenticated write boundaries", () => {
     mocks.postCreate.mockResolvedValue({ id: "post-1" });
     mocks.postFindUnique.mockResolvedValue({ id: "post-1" });
     mocks.reactionFindUnique.mockResolvedValue(null);
+    mocks.reactionUpsert.mockResolvedValue({ id: "reaction-1" });
+    mocks.reactionDeleteMany.mockResolvedValue({ count: 1 });
   });
 
   it("pins new posts to the authenticated member and an owned car", async () => {
@@ -176,7 +178,7 @@ describe("feed authenticated write boundaries", () => {
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });
 
-  it("keys reactions to the authenticated member and refreshes feed plus detail", async () => {
+  it("keys reactions to the authenticated member and uses race-safe upsert semantics", async () => {
     const formData = new FormData();
     formData.set("postId", "post-1");
     formData.set("type", "WRENCH");
@@ -184,10 +186,15 @@ describe("feed authenticated write boundaries", () => {
 
     await toggleFeedReaction(formData);
 
-    expect(mocks.reactionCreate).toHaveBeenCalledWith({
-      data: { postId: "post-1", userId: "member-1", type: "WRENCH" },
+    const key = {
+      postId_userId_type: { postId: "post-1", userId: "member-1", type: "WRENCH" },
+    };
+    expect(mocks.reactionUpsert).toHaveBeenCalledWith({
+      where: key,
+      create: { postId: "post-1", userId: "member-1", type: "WRENCH" },
+      update: {},
     });
-    expect(mocks.reactionDelete).not.toHaveBeenCalled();
+    expect(mocks.reactionDeleteMany).not.toHaveBeenCalled();
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/feed");
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/feed/post-1");
   });
@@ -202,12 +209,12 @@ describe("feed authenticated write boundaries", () => {
     expect(mocks.getCurrentMember).not.toHaveBeenCalled();
     expect(mocks.postFindUnique).not.toHaveBeenCalled();
     expect(mocks.reactionFindUnique).not.toHaveBeenCalled();
-    expect(mocks.reactionCreate).not.toHaveBeenCalled();
-    expect(mocks.reactionDelete).not.toHaveBeenCalled();
+    expect(mocks.reactionUpsert).not.toHaveBeenCalled();
+    expect(mocks.reactionDeleteMany).not.toHaveBeenCalled();
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });
 
-  it("removes only the authenticated member's exact existing reaction and refreshes detail", async () => {
+  it("removes only the authenticated member's exact existing reaction with idempotent delete semantics", async () => {
     mocks.reactionFindUnique.mockResolvedValue({ id: "reaction-1" });
     const formData = new FormData();
     formData.set("postId", "post-1");
@@ -215,12 +222,25 @@ describe("feed authenticated write boundaries", () => {
 
     await toggleFeedReaction(formData);
 
-    const key = {
-      postId_userId_type: { postId: "post-1", userId: "member-1", type: "FIRE" },
-    };
-    expect(mocks.reactionFindUnique).toHaveBeenCalledWith({ where: key });
-    expect(mocks.reactionDelete).toHaveBeenCalledWith({ where: key });
-    expect(mocks.reactionCreate).not.toHaveBeenCalled();
+    const where = { postId: "post-1", userId: "member-1", type: "FIRE" };
+    expect(mocks.reactionDeleteMany).toHaveBeenCalledWith({ where });
+    expect(mocks.reactionUpsert).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/feed/post-1");
+  });
+
+  it("treats a raced-away existing reaction as a successful idempotent removal", async () => {
+    mocks.reactionFindUnique.mockResolvedValue({ id: "reaction-1" });
+    mocks.reactionDeleteMany.mockResolvedValue({ count: 0 });
+    const formData = new FormData();
+    formData.set("postId", "post-1");
+    formData.set("type", "RESPECT");
+
+    await expect(toggleFeedReaction(formData)).resolves.toBeUndefined();
+
+    expect(mocks.reactionDeleteMany).toHaveBeenCalledWith({
+      where: { postId: "post-1", userId: "member-1", type: "RESPECT" },
+    });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/feed");
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/feed/post-1");
   });
 });
